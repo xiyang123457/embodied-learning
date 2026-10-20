@@ -49,17 +49,33 @@ python scripts/first_loop.py --noise 0.05      # 修改4 观测噪声（单位�
 什么程度"这一层信息——`Kp=0.5` 时成功率 4/30，而 `Kp=1.0` 时 30/30，两者的区别不在
 代码，在步数和误差量级。
 
+## W3：坐标变换与正运动学
+
+`src/transforms.py` 是后续几周共用的底座：全部变换按 `T_target_source` 命名，
+表示「把 source 系里的点变到 target 系」。复合法则是下标相邻消去。
+
+```powershell
+python -m pytest tests/ -q          # 6 条单测 9 个用例
+python scripts/camera_to_end.py     # P4 验收题：相机 → 基座 → 末端
+python scripts/w3_p4_visualize.py   # 出乘法链的图
+```
+
+`src/two_link.py` 是平面二连杆正运动学加工具偏移。`scripts/w3_p3_visualize.py` 出三姿态图，
+`scripts/w3_d2_visualize.py` 出 D2 的四张图。
+
+教程见 `notes/W3_坐标变换与正运动学_教程.md`（同目录有离线 HTML 版）。
+
 ## 目录
 
 ```
 configs/      参数（暂空，W5 起用）
-src/          可复用实现（暂空）
-scripts/      入口脚本：first_loop.py
-tests/        小型自动检查
+src/          可复用实现：transforms.py、two_link.py
+scripts/      入口脚本：first_loop.py、camera_to_end.py、各类出图与验证脚本
+tests/        pytest 单测（pythonpath=. 由 pytest.ini 配置）
 data/raw/     原始数据（只读）
 data/processed/ 处理后数据
-outputs/      实验结果，按参数分子目录
-notes/        索引笔记、答辩笔记、周报
+outputs/      实验结果，按参数分子目录；figures/ 放图
+notes/        教程、手算记录、答辩笔记、周报
 ```
 
 ## 说明
