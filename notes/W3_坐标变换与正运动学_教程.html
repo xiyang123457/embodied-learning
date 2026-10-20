@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>坐标变换与正运动学：把一个点送到它该在的地方</title>
+<style>
+:root {
+  --bg: #fdfdfb; --fg: #1f2328; --muted: #6b7280; --line: #e5e7eb;
+  --accent: #1f6feb; --code-bg: #f6f8fa; --sidebar: #f7f7f4;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font-family: -apple-system, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 16px; line-height: 1.85;
+}
+#layout { display: flex; max-width: 1180px; margin: 0 auto; }
+#toc {
+  width: 268px; flex: 0 0 268px; position: sticky; top: 0; align-self: flex-start;
+  height: 100vh; overflow-y: auto; padding: 32px 18px 48px 24px;
+  background: var(--sidebar); border-right: 1px solid var(--line);
+  font-size: 14px; line-height: 1.6;
+}
+#toc .toc-title { font-size: 12px; letter-spacing: .12em; color: var(--muted);
+  text-transform: uppercase; margin-bottom: 14px; }
+#toc ul { list-style: none; margin: 0; padding-left: 0; }
+#toc ul ul { padding-left: 14px; }
+#toc li { margin: 2px 0; }
+#toc a { color: var(--muted); text-decoration: none; display: block;
+  padding: 3px 8px; border-left: 2px solid transparent; border-radius: 3px; }
+#toc a:hover { color: var(--fg); background: #ecece6; }
+#toc a.active { color: var(--accent); border-left-color: var(--accent);
+  background: #eef4ff; font-weight: 600; }
+#content { flex: 1 1 auto; min-width: 0; padding: 40px 56px 120px; }
+h1 { font-size: 30px; line-height: 1.4; margin: 0 0 28px; letter-spacing: -.01em; }
+h2 { font-size: 22px; margin: 46px 0 14px; padding-top: 12px;
+  border-top: 1px solid var(--line); }
+h3 { font-size: 17px; margin: 28px 0 10px; color: #33383f; }
+p { margin: 12px 0; }
+a { color: var(--accent); }
+strong { font-weight: 650; }
+code { font-family: "Cascadia Code", Consolas, "Courier New", monospace;
+  font-size: .88em; background: var(--code-bg); padding: 1px 5px;
+  border-radius: 4px; border: 1px solid #eceef1; }
+pre { background: var(--code-bg); border: 1px solid var(--line);
+  border-radius: 8px; padding: 14px 16px; overflow-x: auto;
+  line-height: 1.55; margin: 16px 0; }
+pre code { background: none; border: 0; padding: 0; font-size: 13px; }
+table { border-collapse: collapse; width: 100%; margin: 18px 0; font-size: 14.5px; }
+th, td { border: 1px solid var(--line); padding: 8px 11px; text-align: left;
+  vertical-align: top; }
+th { background: #f3f4f6; font-weight: 650; }
+tbody tr:nth-child(even) { background: #fafafa; }
+blockquote { margin: 16px 0; padding: 10px 16px; border-left: 3px solid #c9ced6;
+  background: #f8f8f5; color: #444; }
+ol, ul { padding-left: 26px; }
+li { margin: 6px 0; }
+ol > li::marker { color: var(--muted); }
+hr { border: 0; border-top: 1px solid var(--line); margin: 32px 0; }
+@media (max-width: 900px) {
+  #layout { display: block; }
+  #toc { position: static; width: auto; height: auto; border-right: 0;
+    border-bottom: 1px solid var(--line); }
+  #content { padding: 24px 20px 80px; }
+}
+@media print {
+  #toc { display: none; }
+  #layout { display: block; max-width: none; }
+  #content { padding: 0; }
+  body { background: #fff; font-size: 11pt; line-height: 1.6; }
+  h2 { page-break-after: avoid; }
+  pre, table, blockquote { page-break-inside: avoid; }
+  a { color: #000; text-decoration: none; }
+}
+</style>
+</head>
+<body>
+<div id="layout">
+<nav id="toc">
+  <div class="toc-title">目录</div>
+  <ul><li><a href="#_2">文档说明</a></li><li><a href="#_3">一、从一个场景开始</a></li><li><a href="#_4">二、变换的方向由名字决定</a></li><li><a href="#_5">三、二维：把两步压成一个矩阵</a><ul><li><a href="#_6">求逆与两个自检</a></li></ul></li><li><a href="#r_y">四、三维：R_y 是唯一反着放的那个</a></li><li><a href="#_7">五、四个坐标系、下标消去与正运动学</a><ul><li><a href="#_8">一个能全程手算的算例</a></li><li><a href="#_9">二连杆正运动学</a></li><li><a href="#_10">这套东西在真实系统里长什么样</a></li></ul></li><li><a href="#_11">六、动手验证</a><ul><li><a href="#_12">怎么确认自己跑对了</a></li></ul></li><li><a href="#_13">七、自测</a></li><li><a href="#_14">八、常见坑</a></li><li><a href="#w4-w6">附：W4 到 W6 会用到的接口</a></li><li><a href="#_15">参考资料</a></li></ul>
+</nav>
+<main id="content">
+<h1>坐标变换与正运动学：把一个点送到它该在的地方</h1>
+
+<h2 id="_2">文档说明</h2>
+<p>这份教程覆盖 W3 的全部内容：变换的方向约定、二维与三维旋转、4×4 齐次变换、四个坐标系之间的关系、二连杆正运动学。目标是能对任何一个变换说清「从哪个系到哪个系」，并且不靠推导就能判断一条乘法链是否合法。</p>
+<p>全部内容约 52 分钟，其中包含一次动手验证。</p>
+<table>
+<thead>
+<tr>
+<th>时间</th>
+<th>内容</th>
+<th>完成标志</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0 到 7 分钟</td>
+<td>一个找快递的场景</td>
+<td>能说出「从 3 栋到信箱」和「从信箱到 3 栋」为什么不是一回事</td>
+</tr>
+<tr>
+<td>7 到 19 分钟</td>
+<td><code>T_target_source</code> 命名规则与二维手算</td>
+<td>能写出 (1,0) 先转 90 度再平移 1 米的结果，以及反序的结果</td>
+</tr>
+<tr>
+<td>19 到 31 分钟</td>
+<td>三维旋转、4×4 齐次变换、便宜求逆</td>
+<td>能用 <code>R_y(90)</code> 把 sin 符号写反的矩阵抓出来</td>
+</tr>
+<tr>
+<td>31 到 41 分钟</td>
+<td>四个坐标系、下标消去、二连杆正运动学</td>
+<td>能写出算例的合法乘法链，并说出错写法的输出</td>
+</tr>
+<tr>
+<td>41 到 47 分钟</td>
+<td>动手验证</td>
+<td>脚本第 2 节两行输出分别是 (1,1,0) 和 (0,0,0)</td>
+</tr>
+<tr>
+<td>47 到 52 分钟</td>
+<td>自测</td>
+<td>六道题里答对五道</td>
+</tr>
+</tbody>
+</table>
+<p>文中所有数字都在本机实测过，环境为 Windows + Python 3.10.19 + numpy 2.2.6。验证脚本是 <code>scripts/w3_tutorial_check.py</code>。</p>
+<p>这份教程不实现四元数、欧拉角旋转顺序、李群李代数。原因写在第四节末尾。它假定你会 Python 和 NumPy，做过点与向量的加减乘。</p>
+<h2 id="_3">一、从一个场景开始</h2>
+<p>快递员把包裹放在 3 栋门口的快递柜里。你从小区大门出发，走了两段：大门到 3 栋，3 栋到快递柜。</p>
+<p>每段路都隐含一句话：从哪出发，到哪去。如果你把第二段记成「从快递柜到 3 栋」，你会从柜子往回走，最后站在小区门口发呆。路本身没错，方向反了，结果全不对。</p>
+<p>机器人算位置是同一件事。相机看到目标，报告的是「目标在相机坐标系里的位置」。要把它换算到机械臂基座坐标系，就得连走几段，每段都带方向。</p>
+<p>日常说话里「3 栋到柜子」和「柜子到 3 栋」几乎没区别，反正都在那片地方。矩阵里这两者差一个转置，换算出来的位置能差好几米。</p>
+<table>
+<thead>
+<tr>
+<th>找快递的环节</th>
+<th>具身系统里的对应物</th>
+<th>术语</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>小区大门</td>
+<td>机械臂安装的基准坐标系</td>
+<td><code>base</code></td>
+</tr>
+<tr>
+<td>3 栋</td>
+<td>机械臂末端坐标系</td>
+<td><code>end</code></td>
+</tr>
+<tr>
+<td>3 栋门口的快递柜</td>
+<td>固定在末端上的工具</td>
+<td><code>tool</code></td>
+</tr>
+<tr>
+<td>你手里手机拍的照片</td>
+<td>相机画面</td>
+<td><code>cam</code></td>
+</tr>
+<tr>
+<td>照片里的包裹</td>
+<td>相机测到的目标</td>
+<td><code>obj</code></td>
+</tr>
+<tr>
+<td>「从大门怎么走到 3 栋」</td>
+<td>把 3 栋的坐标变到大门系</td>
+<td><code>T_base_end</code></td>
+</tr>
+<tr>
+<td>「从 3 栋怎么走到柜子」</td>
+<td>把柜子的坐标变到 3 栋系</td>
+<td><code>T_end_tool</code></td>
+</tr>
+</tbody>
+</table>
+<p>有一件事要先分开：<code>T_base_end</code> 会随关节角变化，每次都不同；<code>T_end_tool</code> 是装好之后不再变的固定值；<code>T_base_cam</code> 靠标定得到；<code>T_cam_obj</code> 是相机当场测出来的。这四个量性质完全不同，当成同一类东西处理，一定会算错。</p>
+<h2 id="_4">二、变换的方向由名字决定</h2>
+<p>一个旋转矩阵单独看没有方向信息。<code>[[0,-1],[1,0]]</code> 这个矩阵，可以表示「把点逆时针转 90 度」，也可以表示「换一个转了 90 度的坐标系去看同一个点」。两种说法在数值上完全一样。</p>
+<p>所以真正需要固定下来的不是矩阵，是命名。规则只有一条：</p>
+<pre><code>T_target_source  表示把 source 系里的点，变到 target 系
+p_target = T_target_source @ p_source
+</code></pre>
+<p>复合的时候，下标像单位换算那样相邻消去：</p>
+<pre><code>T_base_obj = T_base_cam @ T_cam_obj
+             └─ base←cam ─┘
+                          └─ cam←obj ─┘
+             base ←────────────── obj     下标首尾相接，合法
+</code></pre>
+<p><code>T_cam_base @ T_cam_obj</code> 的下标是 <code>cam←base</code> 和 <code>cam←obj</code>，中间的 base 和 cam 对不上，这个乘积没有几何意义。程序不会报错，它只会给你一个数字。</p>
+<p>第五节的算例会看到，错写法给出的结果是 <code>(0, 0, 0)</code>。一个完全合法、看起来像答案、实际上什么都没说的三元组。这类错误最难查，因为输出不是 NaN，也不是报错。</p>
+<h2 id="_5">三、二维：把两步压成一个矩阵</h2>
+<p>取点 <code>p = (1, 0)</code>，先绕原点逆时针转 90 度，再沿 x 方向平移 1 米。</p>
+<p>第一步把 x 轴上的点送到 y 轴：<code>(1,0) → (0,1)</code>。第二步在原坐标系里加 1 米：<code>(0,1) → (1,1)</code>。</p>
+<p>换成矩阵，旋转和平移本来是两种运算：</p>
+<pre><code>p' = R p + t
+</code></pre>
+<p>转两次再移两次，就得写两遍加号。把点升到三维，末尾补一个 1，就能把加号吸进矩阵：</p>
+<pre><code>p' = T p ,   T = [[R, t],
+                  [0, 1]]
+</code></pre>
+<p>本题的 <code>T</code> 是</p>
+<pre><code>T = [[0, -1, 1],
+     [1,  0, 0],
+     [0,  0, 1]]
+</code></pre>
+<p><code>T @ (1, 0, 1)</code> 得到 <code>(1, 1, 1)</code>，前两维就是手算的 (1,1)。第三维那个 1 从头到尾不变，它存在的唯一用途就是让平移能被乘进去。</p>
+<p>这个第三维也叫齐次坐标。它看起来像个技巧，实际是整个体系能写成连乘的原因。没有它，第四节的下标消去无从谈起。</p>
+<p>现在把顺序反过来，先平移再旋转。两个矩阵相乘的顺序变了，结果也变了：</p>
+<pre><code>反序 T = [[0, -1, 0],
+          [1,  0, 1],
+          [0,  0, 1]]
+</code></pre>
+<p>代入 (1,0,1) 得 (0,2,1)，前两维是 (0,2)。同一个 1 米，正序里落在 <code>T[0][2]</code> 即 x 分量，反序里落在 <code>T[1][2]</code> 即 y 分量。旋转块一个字都没变。</p>
+<p>写在 R 右边的东西会被 R 一起转，写在 R 左边的东西不会。这就是矩阵乘法不交换的几何含义。</p>
+<h3 id="_6">求逆与两个自检</h3>
+<p>二维旋转的逆就是转置，因为 <code>R</code> 的两列是正交单位向量。平移的逆不是简单取负：</p>
+<pre><code>T⁻¹ = [[Rᵀ, -Rᵀ t],
+       [0,  1    ]]
+</code></pre>
+<p>写 <code>-t</code> 是这一周最常见的错误。<code>-t</code> 只在对 <code>R</code> 是单位阵时才对。</p>
+<p>另外两个自检值得记一辈子。<code>Rᵀ R</code> 应该等于单位阵，<code>det(R)</code> 应该等于 <code>+1</code>。如果 det 算出 <code>-1</code>，那不是旋转，是镜像，说明某个符号错了或者用了行向量约定。</p>
+<p>还有一个浮点细节。<code>np.cos(np.pi/2)</code> 等于 <code>6.123e-17</code>，不等于 0。所以所有比较都要用 <code>np.allclose</code>，不能用 <code>==</code>。</p>
+<h2 id="r_y">四、三维：<code>R_y</code> 是唯一反着放的那个</h2>
+<p>三个基本旋转是把二维的 <code>[[c,-s],[s,c]]</code> 往对应轴上搬：</p>
+<pre><code>R_x(θ) = [[1,  0,     0    ],   R_y(θ) = [[ cosθ, 0, sinθ],
+          [0,  cosθ, -sinθ],             [ 0,    1, 0   ],
+          [0,  sinθ,  cosθ]]             [-sinθ, 0, cosθ]]
+
+R_z(θ) = [[cosθ, -sinθ, 0],
+          [sinθ,  cosθ, 0],
+          [0,     0,    1]]
+</code></pre>
+<p><code>R_x</code> 和 <code>R_z</code> 里 <code>-s</code> 都在右上角，<code>R_y</code> 里 <code>-s</code> 跑到左下角去了。原因是绕 y 轴转的循环方向是 z→x→z，跟另外两个反着。</p>
+<p>自检只有一条：<code>R_y(90°) @ (0,0,1)</code> 应该等于 <code>(1,0,0)</code>，z 轴正方向被转到 x 轴正方向。把 sin 的符号写反，同一个向量会得到 <code>(-1,0,0)</code>。方向差 180 度，误差不是小数级别，但程序照样跑得通。</p>
+<p>三维的齐次变换一样是 4×4：</p>
+<pre><code>T = [[R, t],
+     [0, 1]]
+</code></pre>
+<p>求逆的便宜算法依然是 <code>[[Rᵀ, -Rᵀt], [0,1]]</code>。它比 <code>np.linalg.inv</code> 快，而且因为 <code>R</code> 是正交阵，误差也更小。反过来，<code>T.T</code> 永远不等于 <code>T⁻¹</code>，除非平移恰好是 0。这个差别有多大取决于平移的长度，在本文的算例里是 1.0。</p>
+<p>四元数、欧拉角的旋转顺序、李群李代数这三样，这一周只到「知道它存在」为止。四元数要知道不同库的分量排列顺序不同，用之前查文档；欧拉角要知道旋转顺序和奇异位置会带来问题；李群李代数要知道它解决的是「旋转不能直接相减」这件事。指南的原话是不以背完公式作为开始机器人实验的条件。</p>
+<h2 id="_7">五、四个坐标系、下标消去与正运动学</h2>
+<p>一个典型的抓取系统有六个坐标系，关系是一棵树：</p>
+<pre><code>world ──► base ──► end ──► tool
+                     │
+                     └──► cam ──► obj
+</code></pre>
+<p><code>base</code> 到 <code>end</code> 由关节角决定，这也是唯一随时间变化的边。<code>end</code> 到 <code>tool</code> 是固定值。<code>base</code> 到 <code>cam</code> 靠手眼标定。<code>cam</code> 到 <code>obj</code> 由相机当场测出。</p>
+<h3 id="_8">一个能全程手算的算例</h3>
+<p>相机装在基座右侧 1 米，绕 z 轴转了 90 度，光轴指向基座系的 +y。物体在相机正前方 1 米。末端在 (0.5, 0.5, 0)，姿态与基座一致。</p>
+<p>第一步把物体从相机系变到基座系：</p>
+<pre><code>T_base_cam = 转 90 度 @ 平移 (1, 0, 0)
+T_cam_obj  = 无旋转 @ 平移 (1, 0, 0)
+
+T_base_obj = T_base_cam @ T_cam_obj
+</code></pre>
+<p>相机看到的是自己的 +x 方向，转了 90 度之后在基座系里指向 +y。所以物体在基座系的位置是 <code>(1,0,0) + (0,1,0) = (1,1,0)</code>。</p>
+<p>第二步把它从基座系变到末端系，用逆变换：</p>
+<pre><code>T_end_obj = inverse(T_base_end) @ T_base_obj
+</code></pre>
+<p>末端没有旋转，平移是 (0.5, 0.5, 0)，所以物体相对末端是 <code>(1,1,0) - (0.5,0.5,0) = (0.5, 0.5, 0)</code>。</p>
+<p>这两步都能手算，实际输出和手算完全一致。把第一步写成 <code>T_cam_base @ T_cam_obj</code>，输出变成 <code>(0,0,0)</code>，也就是基座原点。这个数字看起来完全正常，甚至有点像一个「对齐了」的结果，这就是它的危险之处。</p>
+<h3 id="_9">二连杆正运动学</h3>
+<p>正运动学就是「把几条变换连起来」这件事的最简单形态。平面二连杆，杆长 <code>l1</code> 和 <code>l2</code>，关节角 <code>θ1</code> 和 <code>θ2</code>：</p>
+<pre><code>x = l1·cos(θ1) + l2·cos(θ1 + θ2)
+y = l1·sin(θ1) + l2·sin(θ1 + θ2)
+</code></pre>
+<p>第二项是 <code>cos(θ1+θ2)</code> 而不是 <code>cos(θ2)</code>。写成后者是最常见的错误，因为它看起来更对称。</p>
+<p>取 <code>l1 = l2 = 1</code>，四个手算核对值如下，本机实测与手算一致：</p>
+<table>
+<thead>
+<tr>
+<th><code>θ1</code></th>
+<th><code>θ2</code></th>
+<th>末端位置</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>0</td>
+<td>(2.000000, 0.000000)</td>
+<td>完全伸直</td>
+</tr>
+<tr>
+<td>π/2</td>
+<td>0</td>
+<td>(0.000000, 2.000000)</td>
+<td>竖直向上</td>
+</tr>
+<tr>
+<td>0</td>
+<td>π</td>
+<td>(0.000000, 0.000000)</td>
+<td>完全折叠，回到基座</td>
+</tr>
+<tr>
+<td>π/4</td>
+<td>π/2</td>
+<td>(0.000000, 1.414214)</td>
+<td>两个 cos 正好抵消</td>
+</tr>
+</tbody>
+</table>
+<p>最后一行是最有信息量的自检。45 度和 135 度的 cos 相加等于 0，sin 相加等于 <code>√2</code>。如果算出来不是 (0, 1.414)，角度累加一定错了。</p>
+<p>工具偏移则要写成变换乘法而不是位置加法：</p>
+<pre><code>T_base_tool = T_base_end @ T_end_tool
+T_end_tool  = make_T(I, [0.1, 0, 0])
+</code></pre>
+<p>在 <code>θ1=0, θ2=π</code> 这一组，末端原点回到 (0,0)，但工具尖端在 (-0.1, 0)。因为工具跟着末端一起转了 180 度，伸出去的方向反了。位置和姿态是耦合的，改一个必然改另一个。这就是为什么必须用齐次变换而不是「位置加角度」两套数据。</p>
+<p>逆运动学不在本周的实现范围内，但要多解和无解这两个概念值得知道。目标在 (1.2, 0.3) 时，由余弦定理 <code>cos θ2 = (1.44 + 0.09 - 2)/2 = -0.235</code>，<code>θ2</code> 有两个解，<code>±103.59°</code>，分别是肘上和肘下。目标在 (3, 0) 时同样是这个公式给出 <code>cos θ2 = 3.5</code>，超出 <code>[-1,1]</code>，无解，因为那两个长度够不到。</p>
+<h3 id="_10">这套东西在真实系统里长什么样</h3>
+<p>ROS 2 的坐标变换库 <code>tf2</code> 把这条命名规则直接写进了函数签名：</p>
+<pre><code class="language-python">tf_buffer.lookup_transform(target_frame, source_frame, time)
+</code></pre>
+<p>要拿「相机在基座系里的位姿」，写的是 <code>lookup_transform("base_link", "camera_link", t)</code>。两个参数写反，库不会纠正，它老老实实返回另一个方向的变换。</p>
+<p>手眼标定是这件事最直接的应用。不管用棋盘格还是 AprilTag，标定程序最后交付的就是一个 4×4 矩阵，也就是 <code>T_base_cam</code>，剩下的事和本文算例完全一样。</p>
+<p><code>scipy.spatial.transform.Rotation</code> 的 <code>as_quat</code> 默认返回 <code>(x, y, z, w)</code> 顺序，一部分库和论文用 <code>(w, x, y, z)</code>。这就是前面说的分量排列顺序问题，它不报错，只让你算出一个转了奇怪角度的姿态。</p>
+<p>VLA 模型输出的 action 通常有 7 维：3 维平移、3 维姿态、1 维夹爪开合。本文的二维点就是它的前两维，砍掉了姿态和夹爪。</p>
+<h2 id="_11">六、动手验证</h2>
+<p>下面这段脚本验证三件事，不实现二连杆和工具偏移，那部分是本周 P3 的交付内容。跑完约 1 秒。完整文件在 <code>scripts/w3_tutorial_check.py</code>。</p>
+<pre><code class="language-python">&quot;&quot;&quot;W3 原理验证：一个变换的方向由它的名字决定。&quot;&quot;&quot;
+import numpy as np
+
+
+def rot_y(t):
+    &quot;&quot;&quot;绕 y 轴转 t 弧度。全篇唯一一个 sin 符号反着放的矩阵（z→x→z 循环）。&quot;&quot;&quot;
+    c, s = np.cos(t), np.sin(t)
+    return np.array([[c, 0.0, s], [0.0, 1.0, 0.0], [-s, 0.0, c]])
+
+
+def rot_z(t):
+    &quot;&quot;&quot;绕 z 轴转 t 弧度。二维 [[c,-s],[s,c]] 的直接推广。&quot;&quot;&quot;
+    c, s = np.cos(t), np.sin(t)
+    return np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
+
+
+def make_T(R, t):
+    &quot;&quot;&quot;拼 4x4 齐次矩阵 [[R, t], [0, 1]]。第 4 维把「乘法加加法」压成纯乘法。&quot;&quot;&quot;
+    T = np.eye(4)
+    T[:3, :3] = R
+    T[:3, 3] = t
+    return T
+
+
+def inverse(T):
+    &quot;&quot;&quot;便宜求逆 [[Rᵀ, -Rᵀt], [0,1]]。写法错成 -t 是最常见的 bug。&quot;&quot;&quot;
+    R, t = T[:3, :3], T[:3, 3]
+    Ti = np.eye(4)
+    Ti[:3, :3] = R.T
+    Ti[:3, 3] = -R.T @ t
+    return Ti
+
+
+# ==== 1. R_y 的符号自检 ====
+# 绕 y 转是 z→x→z 的循环，所以 z 轴正方向应该被转到 x 轴正方向
+wrong_y = np.array([[0.0, 0.0, -1.0], [0.0, 1.0, 0.0], [1.0, 0.0, 0.0]])
+print(&quot;== 1. R_y 的符号自检 ==&quot;)
+# round 到 6 位：cos(pi/2) 是 6.12e-17 不是 0，不 round 会盖住真正的分量
+print(&quot;  R_y(90) @ (0,0,1)   =&quot;, np.round(rot_y(np.pi / 2) @ [0, 0, 1], 6))
+print(&quot;  错符号版 @ (0,0,1)   =&quot;, np.round(wrong_y @ [0, 0, 1], 6))
+
+# ==== 2. 下标消去：同一组矩阵，两种乘法 ====
+# 相机装在基座右侧 1 m 且绕 z 转 90 度；物体在相机正前方 1 m
+T_base_cam = make_T(rot_z(np.pi / 2), [1.0, 0.0, 0.0])
+T_cam_obj = make_T(np.eye(3), [1.0, 0.0, 0.0])
+right = T_base_cam @ T_cam_obj
+# 下标 base←cam 接 cam←obj，中间 cam 消掉，结果 base←obj，合法
+wrong = inverse(T_base_cam) @ T_cam_obj
+# 下标 cam←base 接 cam←obj，中间对不上，没有几何意义，但程序不报错
+
+print(&quot;\n== 2. 下标消去 ==&quot;)
+print(&quot;  T_base_cam @ T_cam_obj =&quot;, right[:3, 3])
+print(&quot;  T_cam_base @ T_cam_obj =&quot;, wrong[:3, 3])
+
+# ==== 3. 便宜求逆与转置的区别 ====
+# 平移为 0 时两者相同；只要平移不为 0，T.T 就一定不等于 T 的逆
+diff_inv = np.abs(inverse(T_base_cam) @ T_base_cam - np.eye(4)).max()
+diff_t = np.abs(inverse(T_base_cam) - T_base_cam.T).max()
+print(&quot;\n== 3. 便宜求逆 vs 转置 ==&quot;)
+print(f&quot;  max|inverse(T) @ T - I| = {diff_inv:.6g}&quot;)
+print(f&quot;  max|inverse(T) - T.T|   = {diff_t:.6g}&quot;)
+</code></pre>
+<p>预期输出（本机实测）：</p>
+<pre><code>== 1. R_y 的符号自检 ==
+  R_y(90) @ (0,0,1)   = [1. 0. 0.]
+  错符号版 @ (0,0,1)   = [-1.  0.  0.]
+
+== 2. 下标消去 ==
+  T_base_cam @ T_cam_obj = [1. 1. 0.]
+  T_cam_base @ T_cam_obj = [0. 0. 0.]
+
+== 3. 便宜求逆 vs 转置 ==
+  max|inverse(T) @ T - I| = 0
+  max|inverse(T) - T.T|   = 1
+</code></pre>
+<h3 id="_12">怎么确认自己跑对了</h3>
+<ol>
+<li>第 1 节两行必须是 <code>[1. 0. 0.]</code> 和 <code>[-1. 0. 0.]</code>。如果两行都是 <code>[1. 0. 0.]</code>，说明 <code>wrong_y</code> 的符号没改到，你验证的是同一个矩阵。</li>
+<li>第 2 节第一行必须是 <code>[1. 1. 0.]</code>。如果是 <code>[0. 0. 0.]</code>，说明你把两个乘法写反了，或者 <code>inverse</code> 里的平移用了 <code>-t</code>。</li>
+<li>第 3 节第二行必须是 1，不能是 0。如果是 0，说明 <code>T_base_cam</code> 的平移恰好为 0，这一项就没测到东西了。</li>
+</ol>
+<h2 id="_13">七、自测</h2>
+<p>不看文档回答，答不出来的地方回去重读对应章节。</p>
+<ol>
+<li><code>T_base_cam</code> 里的 base 和 cam，哪个是 source，哪个是 target？（第二节）</li>
+<li><code>T_base_cam @ T_end_tool</code> 这条乘法链为什么不合法？（第二节）</li>
+<li>为什么齐次变换要多加一维，而不是保留 <code>R p + t</code> 的写法？（第三节）</li>
+<li><code>R_y</code> 的 sin 符号写反了，用什么一条式子能立刻发现？（第四节）</li>
+<li><code>T.T</code> 在什么情况下恰好等于 <code>T⁻¹</code>？（第四节）</li>
+<li>二连杆取 <code>θ1 = π/4, θ2 = π/2</code>，末端为什么在 y 轴上而不是偏向右上方？（第五节）</li>
+</ol>
+<h2 id="_14">八、常见坑</h2>
+<p><strong>把 <code>T_base_cam</code> 写成 <code>T_cam_base</code>。</strong>程序不报错，输出是一个像模像样的坐标。本文算例里它给出 <code>(0,0,0)</code>，正好是基座原点。这类错误的唯一防线是每次写完乘法链，先用眼睛把下标首尾相接扫一遍。</p>
+<p><strong><code>inverse</code> 里写成 <code>-t</code> 而不是 <code>-Rᵀt</code>。</strong>只有在旋转为单位阵时才对，而单位阵恰好是最容易碰到的情形（比如手算时随手把姿态设成 0），于是它在最需要验证的时候伪装成正确。</p>
+<p><strong>第二个杆用了 <code>cos(θ2)</code>。</strong>写出来的曲线依然光滑、依然像正解，只是形状错了。用 <code>(π/4, π/2)</code> 这一组自检能立刻抓到，因为正确答案的 x 分量恰好是 0。</p>
+<p><strong>把 <code>np.cos(np.pi/2)</code> 和 0 用 <code>==</code> 比较。</strong>它等于 <code>6.123e-17</code>。这一类判断要么用 <code>np.allclose</code>，要么先用 <code>np.round</code> 抹掉尾数。</p>
+<p><strong>用 <code>det(R) = -1</code> 的矩阵当旋转。</strong>它其实是一个镜像。det 为负通常意味着某个符号抄错，或者从别的书里抄了行向量约定。加上 <code>det</code> 检查几乎不花时间。</p>
+<h2 id="w4-w6">附：W4 到 W6 会用到的接口</h2>
+<table>
+<thead>
+<tr>
+<th>任务</th>
+<th>关键接口</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>二连杆雅可比</td>
+<td>对 <code>fk(θ1, θ2)</code> 逐关节做数值差分，<code>(fk(θ+e) - fk(θ-e)) / (2e)</code>，返回 2×2</td>
+</tr>
+<tr>
+<td>雅可比验证</td>
+<td><code>np.allclose(J @ dθ, fk(θ + dθ) - fk(θ), atol=1e-10)</code>，<code>dθ</code> 取 1e-6</td>
+</tr>
+<tr>
+<td>轨迹批量变换</td>
+<td><code>apply(T, points)</code> 吃 <code>(N,3)</code>，内部转 <code>(N,4)</code> 再乘完切回三列</td>
+</tr>
+<tr>
+<td>FetchReach 动作</td>
+<td>6 维末端位姿变化量，前 3 维是平移，后 3 维是姿态增量</td>
+</tr>
+<tr>
+<td>BC 输入预处理</td>
+<td>观测里同时含末端位姿和目标位置，两者必须在同一坐标系</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_15">参考资料</h2>
+<table>
+<thead>
+<tr>
+<th>主题</th>
+<th>材料</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>变换方向的约定</td>
+<td>《具身智能入门学习路线与实践指南》5.4 节，本仓库的上游文档</td>
+</tr>
+<tr>
+<td>齐次变换与正运动学</td>
+<td>《具身智能入门学习路线与实践指南》5.5 节前半</td>
+</tr>
+<tr>
+<td>三维旋转的完整推导</td>
+<td>Craig, Introduction to Robotics, 第 2 章</td>
+</tr>
+<tr>
+<td>四元数与欧拉角的分量顺序</td>
+<td>SciPy <code>Rotation</code> 官方文档，重点看 <code>as_quat</code> 的排列说明</td>
+</tr>
+<tr>
+<td>矩阵求逆的数值问题</td>
+<td>NumPy <code>linalg.inv</code> 文档中的 <code>LinAlgError</code> 一节</td>
+</tr>
+</tbody>
+</table>
+</main>
+</div>
+<script>
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll('#toc a'));
+  var heads = links.map(function (a) { return document.getElementById(a.hash.slice(1)); });
+  function activate(idx) {
+    links.forEach(function (a, i) { a.classList.toggle('active', i === idx); });
+  }
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) {
+        var i = heads.indexOf(e.target);
+        if (i >= 0) { activate(i); }
+      }
+    });
+  }, { rootMargin: '0px 0px -75% 0px', threshold: 0 });
+  heads.forEach(function (h) { if (h) { obs.observe(h); } });
+  activate(0);
+})();
+</script>
+</body>
+</html>
