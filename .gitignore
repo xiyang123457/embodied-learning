@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+.pytest_cache/
 tmp/
 
 # 注意：outputs/ 不进这里。P4 要求 outputs/summary.csv 和曲线图进仓库。
