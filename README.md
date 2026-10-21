@@ -65,6 +65,29 @@ python scripts/w3_p4_visualize.py   # 出乘法链的图
 
 教程见 `notes/W3_坐标变换与正运动学_教程.md`（同目录有离线 HTML 版）。
 
+## W5：FetchReach 接口与位置基线
+
+环境：Ubuntu 24.04 + **系统 Python 3.12**（`/usr/bin/python3.12 -m venv .venv`，不用 conda 的 3.14），
+mujoco 3.11.0 / gymnasium 1.4.0 / gymnasium-robotics 1.4.2。**mujoco 不能升到 ≥3.12**：
+`mjtJoint` 变成 pybind11 enum 后 `gym.make("FetchReach-v4")` 直接无信息 `AssertionError`。
+
+```bash
+./.venv/bin/python scripts/check_env.py                 # 打印接口事实（填核对表用）
+./.venv/bin/python scripts/fetchreach_baseline.py       # 断言 + 单轴 + 扫 k + 三策略 20 回合
+./.venv/bin/python scripts/collect_trajectories.py      # 20 条专家轨迹 → data/raw/*.npz
+./.venv/bin/python scripts/verify_trajectories.py       # 6 项逐项核对（--all 查 20 条）
+./.venv/bin/python scripts/plot_w5.py                   # 两张图 → outputs/w5/
+```
+
+关键实测结论（细节见 `notes/W5_接口核对表.md`、`notes/W5_逐项核对记录.md`）：
+
+- 动作 4 维是「末端目标位移比例」，内部 `mocap += 0.05·a[:3]`；第 4 维抓手完全无效。
+- **命令量 ≠ 实际位移**：跟踪比 r ≈ 0.60–0.65，随指令幅值增大略降。
+- 50 步上限是 `truncated`，`terminated` 恒 False；`is_success` 是**当步**口径。
+- 容差 0.05 m 偏宽松：k=1..100 的 `success_ever` 都是 20/20，靠首次达标步数区分
+  （k=50 最好，2.55 步；k=100 越过 `0.05·r·k<2` 后进入 0.02–0.03 m 极限环）。
+- 个别目标 z < ≈0.417 m 在初始姿态下不可达，残差约 2 cm（工作空间限制，非增益问题）。
+
 ## 目录
 
 ```
