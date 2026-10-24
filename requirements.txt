@@ -9,3 +9,8 @@ pytest==8.4.2
 mujoco==3.11.0
 gymnasium==1.4.0
 gymnasium-robotics==1.4.2
+
+# W6：行为克隆。CPU 版足够（18k 参数、2000 样本，训练几秒）。
+# 安装时走官方 CPU 源，避免拉到 2 GB 的 CUDA 依赖：
+#   pip install --index-url https://download.pytorch.org/whl/cpu torch==2.14.1
+torch==2.14.1

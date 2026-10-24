@@ -130,6 +130,28 @@ mujoco 3.11.0 / gymnasium 1.4.0 / gymnasium-robotics 1.4.2。**mujoco 不能升�
   （k=50 最好，2.55 步；k=100 越过 `0.05·r·k<2` 后进入 0.02–0.03 m 极限环）。
 - 个别目标 z < ≈0.417 m 在初始姿态下不可达，残差约 2 cm（工作空间限制，非增益问题）。
 
+## W6：行为克隆（BC）对照实验
+
+```bash
+./.venv/bin/python scripts/train_bc.py --sanity            # 32 样本过拟合检查（loss 7.4e-7）
+./.venv/bin/python scripts/train_bc.py --data-size 20      # 15 训练 / 5 验证，3 个种子
+./.venv/bin/python scripts/train_bc.py --data-size 40      # 35 训练 / 5 验证
+./.venv/bin/python scripts/eval_closed_loop.py             # 8 个模型 × 20 测试回合（seed 100–119）
+./.venv/bin/python scripts/plot_w6.py                      # 两张图 → outputs/w6/
+```
+
+输入 8 维（相对位置 3 + 末端速度 `obs[5:8]` 3 + 夹爪 `obs[3:5]` 2），输出 3 维动作，抓手固定 0。
+报告见 `notes/W6_BC对照报告.md`。
+
+关键结论：
+
+- 数据偏置：专家 2.5 步就到目标，而回合跑满 50 步 → **94.7% 样本是近零动作**，
+  距目标 ≥5 cm 的只有 93 个（40 条轨迹）。
+- 5 cm 判据下**反馈专家 / 线性回归 / MLP-BC 全部 20/20**，该基准已饱和、没有区分力。
+- 判据收紧到 **2 mm** 才分得开：线性回归 1/20，MLP 19/20，专家 19/20
+  → 专家主体近似线性，非线性集中在 clip 饱和区。
+- 数据 20→40 条让验证 loss 减半（0.15→0.07），闭环指标不变：瓶颈是分布，不是数量。
+
 ## 目录
 
 ```
