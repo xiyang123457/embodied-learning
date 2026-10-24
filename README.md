@@ -141,7 +141,7 @@ mujoco 3.11.0 / gymnasium 1.4.0 / gymnasium-robotics 1.4.2。**mujoco 不能升�
 ```
 
 输入 8 维（相对位置 3 + 末端速度 `obs[5:8]` 3 + 夹爪 `obs[3:5]` 2），输出 3 维动作，抓手固定 0。
-报告见 `notes/W6_BC对照报告.md`。
+报告见 `notes/W6_BC对照报告.md`，**零基础讲义见 `notes/W6_BC讲义.md`**（含读图方法、局限、自测题、汇报预案）。
 
 关键结论：
 

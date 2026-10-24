@@ -44,7 +44,23 @@ def _smooth(v: NDArray[np.float64], w: int = 5) -> NDArray[np.float64]:
     return np.convolve(vp, np.ones(w) / w, mode="valid")
 
 
+def _best_points() -> dict:
+    """每个 (tag, seed) 真正存进 ckpt 的那个 epoch。
+
+    训练时每个 epoch 都比一次 val_loss，但日志只每 10 个 epoch 记一条。
+    所以曲线上的 argmin != 实际 checkpoint，必须从 train_summary.csv 读。
+    """
+    path = OUT / "train_summary.csv"
+    out = {}
+    if not path.exists():
+        return out
+    for r in csv.DictReader(path.open(encoding="utf-8")):
+        out[(r["tag"], r["seed"])] = (int(r["best_epoch"]), float(r["best_val"]))
+    return out
+
+
 def fig_train_curves() -> Path:
+    best = _best_points()
     fig, axes = plt.subplots(1, 3, figsize=(14.5, 4.2))
     for ax, tag in zip(axes[:2], ("n20", "n40")):
         rows = list(csv.DictReader((OUT / f"train_curves_{tag}.csv").open(encoding="utf-8")))
@@ -56,10 +72,11 @@ def fig_train_curves() -> Path:
             c = COLORS[i % len(COLORS)]
             ax.semilogy(ep, tr, ls="--", lw=1.1, color=c, alpha=0.8)
             ax.semilogy(ep, va, ls="-", lw=1.5, color=c, label=f"seed{seed} val")
-            j = int(np.argmin(va))
-            ax.scatter(ep[j], va[j], marker="*", s=120, color=c, zorder=5,
+            be, bv = best.get((tag, seed), (ep[int(np.argmin(va))], va.min()))
+            ax.scatter(be, bv, marker="*", s=130, color=c, zorder=5,
                        edgecolor="black", linewidth=0.4)
         ax.plot([], [], "--", color="0.35", lw=1.1, label="train (dashed)")
+        ax.plot([], [], "*", color="0.35", ls="none", ms=9, label="saved ckpt epoch")
         ax.set_xlabel("epoch")
         ax.set_ylabel("weighted MSE loss")
         ax.set_title(f"{tag}: {15 if tag == 'n20' else 35} train / 5 val episodes", fontsize=9)
@@ -123,14 +140,22 @@ def fig_closed_loop(seed: int = 100) -> Path:
     ax1.grid(alpha=0.3, which="both")
     ax1.legend(fontsize=8, loc="lower left")
 
-    show = {"feedback": "feedback k=50", "mlp_n40_s0": "MLP-BC (n40, seed0)",
-            "linear": "linear regression", "random": "random"}
-    for i, (key, label) in enumerate(show.items()):
-        sub = {r["policy"]: r for r in tol if r["condition"] == "std"}
+    # feedback 与 mlp_n40_s0 在 6 个阈值上数值完全相同（20,20,20,20,19,19），
+    # 同色同宽会互相遮住。把 experts 画成粗淡的"带子"垫底，MLP 用虚线压在上面。
+    show = [
+        ("feedback", "feedback k=50 (band)", dict(color=COLORS[0], lw=9, alpha=0.30, marker="o", ms=8)),
+        ("mlp_n40_s0", "MLP-BC n40 s0 (dashed)", dict(color=COLORS[1], lw=1.6, ls="--", marker="o", ms=4)),
+        ("linear", "linear regression", dict(color=COLORS[2], lw=1.7, ls="-", marker="o", ms=4)),
+        ("random", "random", dict(color=COLORS[3], lw=1.7, ls="-", marker="o", ms=4)),
+    ]
+    sub = {r["policy"]: r for r in tol if r["condition"] == "std"}
+    for key, label, style in show:
         if key not in sub:
             continue
         ok = [int(sub[key][f"ok_{t}"]) for t in thrs]
-        ax2.plot(thrs, ok, "-o", ms=4, lw=1.5, color=COLORS[i % len(COLORS)], label=label)
+        ax2.plot(thrs, ok, label=label, **style)
+    ax2.text(0.03, 0.10, "feedback and MLP overlap at all 6 thresholds",
+             transform=ax2.transAxes, fontsize=7.5, color="0.35")
     ax2.set_xscale("log")
     ax2.set_xlabel("success threshold (m)")
     ax2.set_ylabel("successful episodes (out of 20)")
