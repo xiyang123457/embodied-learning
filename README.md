@@ -8,6 +8,8 @@
 | W3 | 坐标变换与二连杆正运动学：`T_target_source` 命名 + 下标消去 | `src/transforms.py`、`src/two_link.py` |
 | W4 | 雅可比、奇异位形、单关节 PD 调参 | `src/jacobian.py`、`src/pd_control.py` |
 | W5 | MuJoCo `FetchReach-v4` 接口核对、位置基线、专家轨迹采集 | `scripts/w5_core.py` 等 |
+| W6 | 行为克隆：20/40 条轨迹、线性回归与 MLP 对照、2 mm 闭环判据 | `src/bc_dataset.py`、`src/bc_model.py` |
+| W7 | 4×4 网格 MDP：值迭代、表格 Q-learning、终止语义与 reward hacking 对照 | `src/mdp_gridworld.py`、`scripts/run_w7.py` |
 
 **W2 的起点实验**：一个不看状态的随机策略和一个只看位置误差的比例控制策略，
 在完全相同的 30 个起点/目标上，到达成功率分别是 0/30 和 30/30；而这个差距**完全由
@@ -15,12 +17,13 @@
 
 ## 环境
 
-分两套，按周选：
+按周选择环境：
 
 | 用于 | 环境 | 依赖 |
 |---|---|---|
 | **W2–W4** | Windows + conda，Python 3.10.19（`pytorch` 环境） | NumPy + Matplotlib + pytest，不需要 GPU |
 | **W5** | Ubuntu 24.04 + 系统 Python 3.12（venv） | mujoco 3.11.0 / gymnasium 1.4.0 / gymnasium-robotics 1.4.2 |
+| **W6–W7** | 复用 W5 的 Ubuntu + Python 3.12 venv | W6 需要 CPU 版 PyTorch；W7 只用 NumPy + Matplotlib |
 
 W2–W4：
 
@@ -30,6 +33,7 @@ python -m pip install -r requirements.txt
 ```
 
 W5 的装法见下文「W5」一节。**`mujoco` 必须 < 3.12**，否则 `gym.make` 会无信息报错。
+W6 另需 CPU 版 PyTorch；W7 不需要新增依赖。
 
 ## 运行
 
@@ -152,31 +156,58 @@ mujoco 3.11.0 / gymnasium 1.4.0 / gymnasium-robotics 1.4.2。**mujoco 不能升�
   → 专家主体近似线性，非线性集中在 clip 饱和区。
 - 数据 20→40 条让验证 loss 减半（0.15→0.07），闭环指标不变：瓶颈是分布，不是数量。
 
+## W7：网格 MDP 与表格 Q-learning
+
+本周不碰 MuJoCo，在 4×4 网格上实现纯 NumPy 的环境、值迭代和表格 Q-learning：
+
+```bash
+./.venv/bin/python scripts/run_w7.py       # 跑全部实验，生成 CSV + 三张图 → outputs/w7/
+./.venv/bin/python -m pytest -q            # 全仓 32 个用例
+```
+
+环境有 16 个状态、4 个动作，洞和终点为终止状态，另有步数截断；奖励只在到达终点时为 1，折扣因子 `γ=0.99`。实验包含三组对照：
+
+- **D2 有模型 vs 无模型**：值迭代与 Q-learning 比较起点价值；
+- **C1 终止语义**：`truncated` 是否仍 bootstrap；
+- **C2 奖励设计**：稀疏终点奖励 vs “变近 +0.1”的距离塑形奖励。
+
+关键结果：
+
+- 值迭代：不滑 **7 轮 / V(0)=0.950990**，滑面 **704 轮 / V(0)=0.542026**。
+- Q-learning：不滑三种子 `Q0=0.950990`，纯贪心 500/500；滑面 `Q0` 三种子均值 **0.5264**，与值迭代均值误差 **0.0157**，纯贪心成功率 **366/500**。
+- 终止语义错误：滑面 `Q0` 均值从 **0.5664** 降到 **0.1684**，仅为参考值的 **31.1%**，但 H=20 成功率没有同步归零。
+- 奖励设计错误：训练不折扣回报从 **0.4167** 升到 **1.1877**，任务成功率却从 **52.8%** 降到 **0%**。
+
+报告见 `notes/W7_RL报告.md`，**零基础 + 专业双轨讲义见 `notes/W7_RL讲义.md`**。图和原始数据在 `outputs/w7/`。
+
 ## 目录
 
 ```
-configs/        参数（暂未使用；W5 的参数仍写在脚本里，等 W6 训练阶段再抽出来）
-src/            可复用实现：transforms.py、transforms_drill.py、two_link.py、
-                jacobian.py、pd_control.py
+configs/        参数（暂未使用；W5 的参数仍写在脚本里）
+src/            可复用实现：transforms.py、two_link.py、jacobian.py、pd_control.py、
+                bc_dataset.py、bc_model.py、mdp_gridworld.py
 scripts/        入口脚本，按周分组：
                 W2  first_loop.py、plot_error_curves.py、plot_position_curves.py、summarize_runs.py
                 W3  camera_to_end.py、w3_*.py
                 W4  w4_*.py
                 W5  w5_core.py、check_env.py、fetchreach_baseline.py、
                     collect_trajectories.py、verify_trajectories.py、plot_w5.py
+                W6  train_bc.py、eval_closed_loop.py、plot_w6.py
+                W7  run_w7.py
                 另：md_to_standalone_html.py 是笔记转离线 HTML 的工具
-tests/          pytest 单测：test_transforms.py（9 用例）、test_jacobian.py（11 用例），
-                pythonpath=. 由 pytest.ini 配置
+tests/          pytest 单测：test_transforms.py（9 用例）、test_jacobian.py（11 用例）、
+                test_mdp_gridworld.py（12 用例），pythonpath=. 由 pytest.ini 配置
 data/raw/       原始数据（只读）：W5 的 20 条专家轨迹 feedback_seed*.npz
 data/processed/ 处理后数据
-outputs/        实验结果：first_loop/ 按参数分子目录、w5/ 放 CSV 与两张图、
+outputs/        实验结果：first_loop/ 按参数分子目录、w5/ 与 w6/ 放 CSV、模型和图、
+                w7/ 放 W7 的 summary.csv、训练曲线、收敛记录和三张图、
                 figures/ 放 W2–W4 的图
-notes/          教程、手算记录、答辩笔记、周报
+notes/          教程、手算记录、答辩笔记、周报、W7 报告与双轨讲义
 ```
 
 ## 说明
 
-三周的模型假设不同，引用结论时不要跨周套用：
+各周的模型假设不同，引用结论时不要跨周套用：
 
 - **W2**：无惯性、无碰撞、无关节的二维点教学模型，动作单位 m/s，`DT` 是控制周期。
   输出全部来自数值模拟，**不能解释为真实机器人性能**（指南附录A 原文）。
@@ -184,3 +215,7 @@ notes/          教程、手算记录、答辩笔记、周报
   只用来观察 PD 本身的行为。
 - **W5**：MuJoCo `FetchReach-v4`，动作是**末端目标位移比例**（内部 `mocap += 0.05·a[:3]`），
   不是关节力矩。跟踪比约 0.60–0.65，所以"命令量 ≠ 实际位移"。
+- **W6**：在同一 FetchReach 数据上比较行为克隆，输入含相对位置、末端速度和夹爪状态；
+  结论受专家线性和静止样本比例限制，不代表真实机器人泛化能力。
+- **W7**：4×4 离散 MDP，纯 NumPy 教学环境；`V(0)` 是折扣期望回报，**不是成功率**。
+  结论不能外推到连续控制、视觉策略或深度 RL。
