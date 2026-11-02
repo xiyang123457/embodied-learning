@@ -10,6 +10,7 @@
 | W5 | MuJoCo `FetchReach-v4` 接口核对、位置基线、专家轨迹采集 | `scripts/w5_core.py` 等 |
 | W6 | 行为克隆：20/40 条轨迹、线性回归与 MLP 对照、2 mm 闭环判据 | `src/bc_dataset.py`、`src/bc_model.py` |
 | W7 | 4×4 网格 MDP：值迭代、表格 Q-learning、终止语义与 reward hacking 对照 | `src/mdp_gridworld.py`、`scripts/run_w7.py` |
+| 阶段 1 | CartPole PPO 最小闭环：随机 0/20 → PPO 20/20，含 checkpoint 重载验证 | `scripts/ppo_cartpole.py` |
 
 **W2 的起点实验**：一个不看状态的随机策略和一个只看位置误差的比例控制策略，
 在完全相同的 30 个起点/目标上，到达成功率分别是 0/30 和 30/30；而这个差距**完全由
@@ -24,6 +25,7 @@
 | **W2–W4** | Windows + conda，Python 3.10.19（`pytorch` 环境） | NumPy + Matplotlib + pytest，不需要 GPU |
 | **W5** | Ubuntu 24.04 + 系统 Python 3.12（venv） | mujoco 3.11.0 / gymnasium 1.4.0 / gymnasium-robotics 1.4.2 |
 | **W6–W7** | 复用 W5 的 Ubuntu + Python 3.12 venv | W6 需要 CPU 版 PyTorch；W7 只用 NumPy + Matplotlib |
+| **阶段 1** | 独立 `.venv-ppo`（系统 Python 3.12） | torch 2.15.0+cu132 / SB3 2.9.2 / gymnasium 1.4.0，见 `requirements-ppo.txt` |
 
 W2–W4：
 
@@ -180,6 +182,30 @@ mujoco 3.11.0 / gymnasium 1.4.0 / gymnasium-robotics 1.4.2。**mujoco 不能升�
 
 报告见 `notes/W7_RL报告.md`，**零基础 + 专业双轨讲义见 `notes/W7_RL讲义.md`**，PPO/扩散策略概念见 `notes/W7_D4_PPO与扩散概念.md`。图和原始数据在 `outputs/w7/`。
 
+## 阶段 1：CartPole PPO 最小闭环
+
+按《具身智能实验与实践学习计划（修订版）》第 3 节执行，独立环境 `.venv-ppo`
+（Python 3.12 + torch 2.15.0+cu132 + SB3 2.9.2），**不动 W5–W7 的 `.venv`**：
+
+```bash
+./.venv-ppo/bin/python scripts/ppo_cartpole.py                                  # 100k 步，约 340 秒
+./.venv-ppo/bin/python scripts/ppo_cartpole.py --timesteps 3000 --n-eval 3 --tag smoke
+./.venv-ppo/bin/python scripts/ppo_cartpole.py --timesteps 20000 --device cuda --tag gpu_bench
+```
+
+产物在 `outputs/ppo_cartpole/`：曲线、逐回合评估 CSV、训练前后视频、`model.zip`、`config.json`。
+
+关键结论（详见 `notes/阶段1_CartPole_PPO报告.md`）：
+
+- 随机策略 **21.0 ± 8.6（0/20）**，PPO **500.0 ± 0.0（20/20）**，从 checkpoint 重载后逐回合结果**完全一致**。
+- **标准差 0.0 是撞顶造成的，不是策略稳定**：500 是 `max_episode_steps` 截断上限，
+  20 回合全撞顶就失去区分力——与 W6「5 cm 判据饱和」是同一类陷阱。
+- 曲线末端滑动平均 421 ≠ 评估 500：窗口 20 仍包含 82.7k 步稳定之前的低分回合，
+  **训练期指标与评估期指标口径不同，报告时两个都要给**。
+- 40k–80k 之间经历约 3 次崩塌-恢复，**"某次评估 500"不能当作收敛证据**，要看连续多回合。
+- PPO 跑 CPU：`MlpPolicy` 仅约 4.6k 参数，GPU 的 kernel 启动开销大于计算本身；
+  GPU 能力已在阶段 0 单独验收（`capability (12,0)` + 反向传播通过 + 峰值 288 MB）。
+
 ## 目录
 
 ```
@@ -194,6 +220,7 @@ scripts/        入口脚本，按周分组：
                     collect_trajectories.py、verify_trajectories.py、plot_w5.py
                 W6  train_bc.py、eval_closed_loop.py、plot_w6.py
                 W7  run_w7.py
+                阶段1 ppo_cartpole.py（用 .venv-ppo，见 requirements-ppo.txt）
                 另：md_to_standalone_html.py 是笔记转离线 HTML 的工具
 tests/          pytest 单测：test_transforms.py（9 用例）、test_jacobian.py（11 用例）、
                 test_mdp_gridworld.py（12 用例），pythonpath=. 由 pytest.ini 配置
@@ -201,8 +228,9 @@ data/raw/       原始数据（只读）：W5 的 20 条专家轨迹 feedback_se
 data/processed/ 处理后数据
 outputs/        实验结果：first_loop/ 按参数分子目录、w5/ 与 w6/ 放 CSV、模型和图、
                 w7/ 放 W7 的 summary.csv、训练曲线、收敛记录和三张图、
+                ppo_cartpole/ 放阶段 1 的曲线、评估 CSV、视频与 model.zip、
                 figures/ 放 W2–W4 的图
-notes/          教程、手算记录、答辩笔记、周报、W7 报告与双轨讲义
+notes/          教程、手算记录、答辩笔记、周报、W7 报告与双轨讲义、阶段 1 PPO 报告
 ```
 
 ## 说明

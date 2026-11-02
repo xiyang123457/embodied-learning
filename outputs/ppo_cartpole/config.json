@@ -1,0 +1,54 @@
+{
+  "env_facts": {
+    "env_id": "CartPole-v1",
+    "observation_space": "Box([-4.8               -inf -0.41887903        -inf], [4.8               inf 0.41887903        inf], (4,), float32)",
+    "observation_dims": 4,
+    "observation_meaning": [
+      "小车位置 x (m), 约 [-4.8, 4.8]",
+      "小车速度 v (m/s)",
+      "杆角度 theta (rad), 约 [-0.42, 0.42]",
+      "杆角速度 omega (rad/s)"
+    ],
+    "action_space": "Discrete(2)",
+    "action_meaning": {
+      "0": "向左推 (固定力)",
+      "1": "向右推 (固定力)"
+    },
+    "reward": "每存活一步 +1，无其他奖励分量",
+    "terminated": "杆倾角超阈值或小车出界 → 真实终止",
+    "truncated": "达到 500 步上限 → 时间截断",
+    "max_episode_steps": 500,
+    "first_obs_seed0": [
+      0.013696168549358845,
+      -0.023021329194307327,
+      -0.04590264707803726,
+      -0.04834723472595215
+    ]
+  },
+  "train": {
+    "env_id": "CartPole-v1",
+    "timesteps": 100000,
+    "train_seed": 0,
+    "eval_seeds": [
+      100,
+      119
+    ],
+    "n_eval_episodes": 20,
+    "n_envs": 4,
+    "device": "cpu",
+    "train_seconds": 339.8,
+    "steps_per_second": 294.3,
+    "policy": "MlpPolicy",
+    "n_steps": 128,
+    "batch_size": 256,
+    "n_epochs": 10,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "clip_range": 0.2,
+    "learning_rate": 0.0003,
+    "torch": "2.15.0+cu132",
+    "sb3": "2.9.2",
+    "gymnasium": "1.4.0",
+    "numpy": "2.5.4"
+  }
+}

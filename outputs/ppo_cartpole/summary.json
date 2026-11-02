@@ -1,0 +1,29 @@
+{
+  "random": {
+    "episodes": 20,
+    "mean_return": 21.0,
+    "std_return": 8.645047258706176,
+    "min_return": 11.0,
+    "max_return": 45.0,
+    "solved": 0,
+    "truncated": 0
+  },
+  "ppo": {
+    "episodes": 20,
+    "mean_return": 500.0,
+    "std_return": 0.0,
+    "min_return": 500.0,
+    "max_return": 500.0,
+    "solved": 20,
+    "truncated": 20
+  },
+  "ppo_reloaded": {
+    "episodes": 20,
+    "mean_return": 500.0,
+    "std_return": 0.0,
+    "min_return": 500.0,
+    "max_return": 500.0,
+    "solved": 20,
+    "truncated": 20
+  }
+}

@@ -1,0 +1,24 @@
+# 阶段 1：CartPole PPO 最小闭环（独立环境 .venv-ppo，Python 3.12）
+#
+# 与根目录 requirements.txt（W2–W7，mujoco 3.11 + CPU torch）互不影响：
+#   python3.12 -m venv .venv-ppo
+#   ./.venv-ppo/bin/pip install -r requirements-ppo.txt
+#
+# torch 走默认 PyPI 源即可拿到 CUDA 13 构建（2.15.0+cu132），
+# RTX 5060 Laptop 是 sm_120，需要 PyTorch >= 2.7 才有对应 kernel。
+# 若下载慢可加 --index-url https://download.pytorch.org/whl/cu128
+torch==2.15.0
+
+# 阶段 1 训练与评估
+stable_baselines3==2.9.2
+gymnasium==1.4.0
+# CartPole 的 rgb_array 渲染依赖 pygame（gymnasium 的 classic-control extra）
+pygame-ce==2.5.8
+
+# 数值与出图
+numpy==2.5.4
+matplotlib==3.11.2
+
+# 训练前后视频
+imageio==2.38.1
+imageio-ffmpeg==0.8.0

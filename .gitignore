@@ -6,3 +6,18 @@ tmp/
 
 # 注意：outputs/ 不进这里。P4 要求 outputs/summary.csv 和曲线图进仓库。
 .venv/
+
+# ==== 阶段 0-5：环境隔离与大文件（不进 git）====
+.venv-ppo/
+.venv-maniskill/
+.venv-act/
+third_party/
+checkpoints/
+videos/
+experiments/**/checkpoints/
+experiments/**/videos/
+experiments/**/data/
+*.hdf5
+
+# ManiSkill 示例的默认输出目录（运行时生成）
+demos/
