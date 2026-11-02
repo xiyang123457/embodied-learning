@@ -1,0 +1,161 @@
+{
+  "mani_skill_version": "3.0.1",
+  "sapien_version": "3.0.3",
+  "torch_version": "2.15.0+cu132",
+  "env_id": "PushCube-v1",
+  "obs_mode": "state",
+  "control_mode": "pd_joint_delta_pos",
+  "reward_mode": "normalized_dense",
+  "num_envs": "1",
+  "max_episode_steps": null,
+  "action_shape": [
+    8
+  ],
+  "robot_uids": "panda",
+  "supported_control_modes": [
+    "pd_joint_delta_pos",
+    "pd_joint_pos",
+    "pd_ee_delta_pos",
+    "pd_ee_delta_pose",
+    "pd_ee_pose",
+    "pd_joint_target_delta_pos",
+    "pd_ee_target_delta_pos",
+    "pd_ee_target_delta_pose",
+    "pd_joint_vel",
+    "pd_joint_pos_vel",
+    "pd_joint_delta_pos_vel"
+  ],
+  "obs_structure": {
+    "shape": [
+      1,
+      35
+    ],
+    "dtype": "torch.float32",
+    "device": "cpu"
+  },
+  "info_keys": [
+    "elapsed_steps",
+    "reconfigure",
+    "success"
+  ],
+  "random_steps": 10,
+  "random_total_reward": 0.602828323841095,
+  "info_after_step": {
+    "elapsed_steps": "tensor([10], dtype=torch.int32)",
+    "success": "tensor([False])"
+  },
+  "state_dict_structure": {
+    "agent": {
+      "qpos": {
+        "shape": [
+          1,
+          9
+        ],
+        "dtype": "torch.float32",
+        "device": "cpu"
+      },
+      "qvel": {
+        "shape": [
+          1,
+          9
+        ],
+        "dtype": "torch.float32",
+        "device": "cpu"
+      }
+    },
+    "extra": {
+      "tcp_pose": {
+        "shape": [
+          1,
+          7
+        ],
+        "dtype": "torch.float32",
+        "device": "cpu"
+      },
+      "goal_pos": {
+        "shape": [
+          1,
+          3
+        ],
+        "dtype": "torch.float32",
+        "device": "cpu"
+      },
+      "obj_pose": {
+        "shape": [
+          1,
+          7
+        ],
+        "dtype": "torch.float32",
+        "device": "cpu"
+      }
+    }
+  },
+  "action_semantics_qpos_delta": {
+    "all_zero": [
+      -0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      -0.0098,
+      -0.0098
+    ],
+    "joint0_+1": [
+      0.02474,
+      0.00016,
+      -0.00738,
+      0.00019,
+      0.00023,
+      3e-05,
+      3e-05,
+      -0.0098,
+      -0.0098
+    ],
+    "joint1_+1": [
+      0.00014,
+      0.02704,
+      0.00018,
+      0.0065,
+      -0.00027,
+      0.0009,
+      -1e-05,
+      -0.0098,
+      -0.0098
+    ],
+    "gripper_+1": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "gripper_-1": [
+      -0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      -0.0,
+      -0.0196,
+      -0.0196
+    ]
+  },
+  "render_image": "outputs/maniskill_check/PushCube-v1_rgb.png",
+  "render_shape": [
+    512,
+    512,
+    3
+  ],
+  "render_ok": true,
+  "random_video": "outputs/maniskill_check/PushCube-v1_random.mp4",
+  "random_video_frames": 50,
+  "random_video_return": 4.5177,
+  "random_video_success": false
+}
