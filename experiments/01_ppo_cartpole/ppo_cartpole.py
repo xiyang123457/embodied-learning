@@ -33,7 +33,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.env_util import make_vec_env
 
-OUT_ROOT = Path("outputs/ppo_cartpole")
+OUT_ROOT = Path(__file__).resolve().parent / "outputs"
 ENV_ID = "CartPole-v1"
 
 # CartPole-v1 的"解决"标准：连续 100 回合平均回报 >= 475（满分 500）

@@ -10,7 +10,9 @@
 | W5 | MuJoCo `FetchReach-v4` 接口核对、位置基线、专家轨迹采集 | `scripts/w5_core.py` 等 |
 | W6 | 行为克隆：20/40 条轨迹、线性回归与 MLP 对照、2 mm 闭环判据 | `src/bc_dataset.py`、`src/bc_model.py` |
 | W7 | 4×4 网格 MDP：值迭代、表格 Q-learning、终止语义与 reward hacking 对照 | `src/mdp_gridworld.py`、`scripts/run_w7.py` |
-| 阶段 1 | CartPole PPO 最小闭环：随机 0/20 → PPO 20/20，含 checkpoint 重载验证 | `scripts/ppo_cartpole.py` |
+| 阶段 1 | CartPole PPO 最小闭环：随机 0/20 → PPO 20/20，含 checkpoint 重载验证 | `experiments/01_ppo_cartpole/` |
+| 阶段 2 | ManiSkill 接口核对 + CPU/GPU 仿真后端实测（单环境慢 18 倍，1024 环境快 36 倍） | `experiments/02_maniskill_probe/` |
+| 阶段 3 | PushCube PPO：19/20 成功；发现 return 是反向指标 | `experiments/03_ppo_pushcube/` |
 
 **W2 的起点实验**：一个不看状态的随机策略和一个只看位置误差的比例控制策略，
 在完全相同的 30 个起点/目标上，到达成功率分别是 0/30 和 30/30；而这个差距**完全由
@@ -26,6 +28,7 @@
 | **W5** | Ubuntu 24.04 + 系统 Python 3.12（venv） | mujoco 3.11.0 / gymnasium 1.4.0 / gymnasium-robotics 1.4.2 |
 | **W6–W7** | 复用 W5 的 Ubuntu + Python 3.12 venv | W6 需要 CPU 版 PyTorch；W7 只用 NumPy + Matplotlib |
 | **阶段 1** | 独立 `.venv-ppo`（系统 Python 3.12） | torch 2.15.0+cu132 / SB3 2.9.2 / gymnasium 1.4.0，见 `requirements-ppo.txt` |
+| **阶段 2–3** | 独立 `.venv-maniskill`（系统 Python 3.12） | mani_skill 3.0.1 / sapien 3.0.3 / torch 2.15.0 / tensorboard；渲染需 Vulkan |
 
 W2–W4：
 
@@ -188,14 +191,15 @@ mujoco 3.11.0 / gymnasium 1.4.0 / gymnasium-robotics 1.4.2。**mujoco 不能升�
 （Python 3.12 + torch 2.15.0+cu132 + SB3 2.9.2），**不动 W5–W7 的 `.venv`**：
 
 ```bash
-./.venv-ppo/bin/python scripts/ppo_cartpole.py                                  # 100k 步，约 340 秒
-./.venv-ppo/bin/python scripts/ppo_cartpole.py --timesteps 3000 --n-eval 3 --tag smoke
-./.venv-ppo/bin/python scripts/ppo_cartpole.py --timesteps 20000 --device cuda --tag gpu_bench
+./.venv-ppo/bin/python experiments/01_ppo_cartpole/ppo_cartpole.py          # 100k 步，约 340 秒
+./.venv-ppo/bin/python experiments/01_ppo_cartpole/ppo_cartpole.py --timesteps 3000 --n-eval 3 --tag smoke
+./.venv-ppo/bin/python experiments/01_ppo_cartpole/ppo_cartpole.py --timesteps 20000 --device cuda --tag gpu_bench
 ```
 
-产物在 `outputs/ppo_cartpole/`：曲线、逐回合评估 CSV、训练前后视频、`model.zip`、`config.json`。
+产物在 `experiments/01_ppo_cartpole/outputs/`：曲线、逐回合评估 CSV、训练前后视频、
+`model.zip`、`config.json`。
 
-关键结论（详见 `notes/阶段1_CartPole_PPO报告.md`）：
+关键结论（详见 [`experiments/01_ppo_cartpole/report.md`](experiments/01_ppo_cartpole/report.md)）：
 
 - 随机策略 **21.0 ± 8.6（0/20）**，PPO **500.0 ± 0.0（20/20）**，从 checkpoint 重载后逐回合结果**完全一致**。
 - **标准差 0.0 是撞顶造成的，不是策略稳定**：500 是 `max_episode_steps` 截断上限，
@@ -206,13 +210,45 @@ mujoco 3.11.0 / gymnasium 1.4.0 / gymnasium-robotics 1.4.2。**mujoco 不能升�
 - PPO 跑 CPU：`MlpPolicy` 仅约 4.6k 参数，GPU 的 kernel 启动开销大于计算本身；
   GPU 能力已在阶段 0 单独验收（`capability (12,0)` + 反向传播通过 + 峰值 288 MB）。
 
+## 阶段 2–3：ManiSkill 与 PushCube PPO
+
+从阶段 2 起，实验代码不再放进 `scripts/`，统一收进 `experiments/`：每个阶段自带 README、
+配置、运行封装与产物，避免「这个脚本该用哪个 venv」变得不可查。
+总索引见 [`experiments/README.md`](experiments/README.md)。
+
+```bash
+# 阶段 2：接口核对 + CPU/GPU 后端实测
+./.venv-maniskill/bin/python experiments/02_maniskill_probe/probe_env.py
+./.venv-maniskill/bin/python experiments/02_maniskill_probe/bench_backend.py
+
+# 阶段 3：PushCube PPO（官方 baseline，配置驱动，每次 run 留 meta.json）
+./.venv-maniskill/bin/python experiments/03_ppo_pushcube/run.py --config smoke
+./.venv-maniskill/bin/python experiments/03_ppo_pushcube/run.py --config train
+./.venv-maniskill/bin/python experiments/03_ppo_pushcube/evaluate.py \
+  --checkpoint experiments/03_ppo_pushcube/runs/<run>/final_ckpt.pt --n-episodes 20
+```
+
+关键结论：
+
+- **ManiSkill 该不该用 GPU，取决于并行数**：单环境 GPU 比 CPU 慢 18 倍，1024 环境快 36.5 倍，
+  分界线在 `num_envs ≈ 32–64`；8 GB 显存跑 1024 个 PushCube 只占 1.53 GB。这与 CartPole PPO 的结论不矛盾——
+  那边瓶颈是 CPU 串行采样，这边瓶颈是物理仿真本身。
+- **PushCube 的 return 是反向指标**：成功的 19 个回合 return 只有 3.8–4.9，唯一失败的回合是 23.4。
+  因为 `normalized_dense` 是势函数变化，失败策略熬满 50 步反而累积更多奖励。**必须按 `success` 判定。**
+- 独立评估 **19/20（95%）**，但 20 回合的 Wilson 置信区间是 **[76%, 99%]**；训练内 8 回合评估的
+  1.0 → 0.625 跳变更可能是抽样噪声，而不是策略崩了。
+- 这属于「在官方 baseline 上完成自己的训练与评估」，**不等于复现官方成功率**——
+  官方 README 没给 PushCube 的百分比。
+
+详细分析见 [`experiments/03_ppo_pushcube/report.md`](experiments/03_ppo_pushcube/report.md)。
+
 ## 目录
 
 ```
 configs/        参数（暂未使用；W5 的参数仍写在脚本里）
 src/            可复用实现：transforms.py、two_link.py、jacobian.py、pd_control.py、
                 bc_dataset.py、bc_model.py、mdp_gridworld.py
-scripts/        入口脚本，按周分组：
+scripts/        W2–W7 的入口脚本，按周分组（阶段实验不放这里）：
                 W2  first_loop.py、plot_error_curves.py、plot_position_curves.py、summarize_runs.py
                 W3  camera_to_end.py、w3_*.py
                 W4  w4_*.py
@@ -220,17 +256,20 @@ scripts/        入口脚本，按周分组：
                     collect_trajectories.py、verify_trajectories.py、plot_w5.py
                 W6  train_bc.py、eval_closed_loop.py、plot_w6.py
                 W7  run_w7.py
-                阶段1 ppo_cartpole.py（用 .venv-ppo，见 requirements-ppo.txt）
                 另：md_to_standalone_html.py 是笔记转离线 HTML 的工具
+experiments/    阶段实验（计划书第 2 节起），每个阶段自带 README、report、configs 与产物：
+                01_ppo_cartpole/   CartPole PPO（.venv-ppo）
+                02_maniskill_probe/ 接口核对与 CPU/GPU 后端实测（.venv-maniskill）
+                03_ppo_pushcube/  PushCube PPO，含 run.py / evaluate.py 与官方 baseline 封装
 tests/          pytest 单测：test_transforms.py（9 用例）、test_jacobian.py（11 用例）、
                 test_mdp_gridworld.py（12 用例），pythonpath=. 由 pytest.ini 配置
 data/raw/       原始数据（只读）：W5 的 20 条专家轨迹 feedback_seed*.npz
 data/processed/ 处理后数据
-outputs/        实验结果：first_loop/ 按参数分子目录、w5/ 与 w6/ 放 CSV、模型和图、
+outputs/        W2–W7 的实验结果：first_loop/ 按参数分子目录、w5/ 与 w6/ 放 CSV、模型和图、
                 w7/ 放 W7 的 summary.csv、训练曲线、收敛记录和三张图、
-                ppo_cartpole/ 放阶段 1 的曲线、评估 CSV、视频与 model.zip、
                 figures/ 放 W2–W4 的图
-notes/          教程、手算记录、答辩笔记、周报、W7 报告与双轨讲义、阶段 1 PPO 报告
+notes/          教程、手算记录、答辩笔记、周报、W7 报告与双轨讲义（阶段报告放各自 experiments 目录）
+third_party/    第三方仓库（不进 git）：ManiSkill sparse checkout，供阶段 3 的官方 PPO baseline
 ```
 
 ## 说明

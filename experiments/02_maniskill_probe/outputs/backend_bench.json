@@ -1,0 +1,52 @@
+[
+  {
+    "backend": "cpu",
+    "num_envs": 1,
+    "device": "cpu",
+    "batched_steps": 100,
+    "env_steps": 100,
+    "seconds": 0.054,
+    "env_steps_per_s": 1865.7,
+    "peak_gpu_gb": 0.0
+  },
+  {
+    "backend": "gpu",
+    "num_envs": 1,
+    "device": "cuda",
+    "batched_steps": 100,
+    "env_steps": 100,
+    "seconds": 0.991,
+    "env_steps_per_s": 100.9,
+    "peak_gpu_gb": 1.27
+  },
+  {
+    "backend": "gpu",
+    "num_envs": 64,
+    "device": "cuda",
+    "batched_steps": 100,
+    "env_steps": 6400,
+    "seconds": 1.128,
+    "env_steps_per_s": 5672.3,
+    "peak_gpu_gb": 1.27
+  },
+  {
+    "backend": "gpu",
+    "num_envs": 256,
+    "device": "cuda",
+    "batched_steps": 100,
+    "env_steps": 25600,
+    "seconds": 1.189,
+    "env_steps_per_s": 21532.8,
+    "peak_gpu_gb": 1.34
+  },
+  {
+    "backend": "gpu",
+    "num_envs": 1024,
+    "device": "cuda",
+    "batched_steps": 100,
+    "env_steps": 102400,
+    "seconds": 1.502,
+    "env_steps_per_s": 68156.1,
+    "peak_gpu_gb": 1.53
+  }
+]

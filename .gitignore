@@ -21,3 +21,7 @@ experiments/**/data/
 
 # ManiSkill 示例的默认输出目录（运行时生成）
 demos/
+
+# 阶段实验：中间 checkpoint 与 tensorboard 事件不进 git（保留 final_ckpt.pt）
+experiments/**/runs/*/ckpt_*.pt
+experiments/**/runs/*/events.out.tfevents.*

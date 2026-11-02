@@ -25,7 +25,7 @@ import gymnasium as gym
 import imageio.v2 as imageio
 import numpy as np
 
-OUT = Path("outputs/maniskill_check")
+OUT = Path(__file__).resolve().parent / "outputs"
 
 
 def tree(obj, depth: int = 0, max_depth: int = 3) -> dict:
