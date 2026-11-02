@@ -4,6 +4,7 @@
 > 复现命令：`./.venv/bin/python scripts/run_w7.py`  
 > 原始结果：`outputs/w7/summary.csv`、`outputs/w7/vi_convergence.csv`、`outputs/w7/q_training_curves.csv`  
 > 零基础讲义：`notes/W7_RL讲义.md`  
+> D4 概念笔记：`notes/W7_D4_PPO与扩散概念.md`
 > 单元测试：`./.venv/bin/python -m pytest -q`，全仓 32 passed
 
 ## 摘要
