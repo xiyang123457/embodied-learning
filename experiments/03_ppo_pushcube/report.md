@@ -94,8 +94,12 @@
 | 平均回报 | 5.36 ± 4.26 |
 | 平均步数 | 15.8（上限 50） |
 
-逐回合明细见 `runs/<train_run>/eval/per_episode.csv`；成功案例 `eval/success_seed100.mp4`（11 帧）
-与失败案例 `eval/failure_seed113.mp4`（50 帧）都已保存——计划书要求两类都要留，不能只展示成功。
+逐回合明细见 `runs/<train_run>/eval/per_episode.csv`；成功案例 `eval/success_seed100.mp4`
+（11 步 → 26 帧 @4fps，6.5 秒）与失败案例 `eval/failure_seed113.mp4`（50 步 → 65 帧，16 秒）
+都已保存——计划书要求两类都要留，不能只展示成功。
+
+视频默认慢放（4 fps）并在首尾定格：成功回合只要 11–19 步，成功即 `terminated`，
+按 20 fps 播放不到 1 秒根本看不清过程。每帧左上角叠加了 `step / reward / success`。
 
 ---
 

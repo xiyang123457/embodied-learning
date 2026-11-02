@@ -57,7 +57,12 @@ cd third_party/ManiSkill && git sparse-checkout set examples/baselines
   --n-episodes 20 --seed-start 100
 ```
 
-产出 `per_episode.csv`、`summary.json` 与逐回合视频（默认前 3 回合）。
+产出 `per_episode.csv`、`summary.json`，以及两段**慢放**视频：首个成功回合与首个失败回合。
+
+视频为什么默认 4 fps：成功回合只要 11–19 步就结束，成功即 `terminated`，无法继续录；
+按 20 fps 播放不到 1 秒，看不清「靠近 → 推动 → 方块进目标圈」的过程。
+所以默认降到 4 fps，首帧定格 5 帧、末帧定格 10 帧，并在每帧左上角叠加
+`step / reward / success`。用 `--video-fps` 可调整速度。
 
 ## 配置项
 

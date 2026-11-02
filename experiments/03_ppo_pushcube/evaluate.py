@@ -92,7 +92,9 @@ def run_episode(env, agent, seed: int, max_steps: int, frames_out: list | None =
             f = np.asarray(f)
             if f.ndim == 4:
                 f = f[0]
-            frames_out.append(f.astype(np.uint8))
+            label = (f"step {steps:02d}/{max_steps}  "
+                     f"reward {_scalar(reward):+.3f}  success={success_ever}")
+            frames_out.append((f.astype(np.uint8), label))
 
     return {
         "seed": seed,
@@ -102,6 +104,36 @@ def run_episode(env, agent, seed: int, max_steps: int, frames_out: list | None =
         "terminated": int(_scalar(terminated) > 0.5),
         "truncated": int(_scalar(truncated) > 0.5),
     }
+
+
+def write_video(path: Path, frames: list[tuple[np.ndarray, str]], fps: int,
+                hold_first: int = 5, hold_last: int = 10) -> int:
+    """把 (帧, 标注) 序列写成慢放视频。
+
+    成功回合只要 11-19 步就结束，按 20 fps 播放不到 1 秒，肉眼根本看不清
+    「靠近 → 推动 → 方块进目标圈」的过程；成功时 episode 还会 terminated，
+    无法继续录。所以这里做三件事：
+      1. 降到低帧率（默认 4 fps）播放
+      2. 首帧定格，先让人看清初始布局
+      3. 末帧定格，停住看最终结果
+    另外每帧左上角叠加步数、当步奖励和成功标志。
+    """
+    import imageio.v2 as imageio
+    from PIL import Image, ImageDraw
+
+    def annotate(frame: np.ndarray, text: str) -> np.ndarray:
+        img = Image.fromarray(frame).convert("RGB")
+        draw = ImageDraw.Draw(img)
+        draw.rectangle([0, 0, img.width, 16], fill=(0, 0, 0))
+        draw.text((4, 2), text, fill=(235, 235, 235))
+        return np.asarray(img)
+
+    seq: list[np.ndarray] = []
+    seq += [annotate(*frames[0])] * hold_first
+    seq += [annotate(*f) for f in frames]
+    seq += [annotate(*frames[-1])] * hold_last
+    imageio.mimsave(path, seq, fps=fps, macro_block_size=1)
+    return len(seq)
 
 
 def main() -> None:
@@ -115,6 +147,8 @@ def main() -> None:
     ap.add_argument("--max-steps", type=int, default=50,
                     help="单回合上限，与训练的 episode horizon 一致")
     ap.add_argument("--no-video", action="store_true", help="完全不录视频")
+    ap.add_argument("--video-fps", type=int, default=4,
+                    help="评估视频帧率；成功回合只有十几步，默认降到 4fps 慢放")
     ap.add_argument("--out", default=None, help="输出目录，默认放在 checkpoint 同级 eval/")
     args = ap.parse_args()
 
@@ -152,8 +186,6 @@ def main() -> None:
     # ---- 2. 补录「首个成功」和「首个失败」，两类案例都要有视频
     recorded: list[str] = []
     if not args.no_video:
-        import imageio.v2 as imageio
-
         cases = []
         ok = next((r for r in rows if r["success"]), None)
         bad = next((r for r in rows if not r["success"]), None)
@@ -165,15 +197,16 @@ def main() -> None:
             print("[提示] 本次评估没有失败回合，只录到成功视频；不能据此声称策略无失败模式")
 
         for tag, ref in cases:
-            frames: list[np.ndarray] = []
+            frames: list[tuple[np.ndarray, str]] = []
             redo = run_episode(env, agent, ref["seed"], args.max_steps, frames_out=frames)
             if redo["success"] != ref["success"]:
                 print(f"[警告] seed={ref['seed']} 重跑结果与首次不一致 "
                       f"({ref['success']} vs {redo['success']})，检查随机性设置")
             path = out_dir / f"{tag}_seed{ref['seed']}.mp4"
-            imageio.mimsave(path, frames, fps=20, macro_block_size=1)
+            n_frames = write_video(path, frames, fps=args.video_fps)
             recorded.append(path.name)
-            print(f"  录制 {path.name}（{len(frames)} 帧, success={bool(redo['success'])}）")
+            print(f"  录制 {path.name}（{len(frames)} 步 -> {n_frames} 帧 "
+                  f"@ {args.video_fps}fps，含首尾定格与标注）")
 
     env.close()
 
