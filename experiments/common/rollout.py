@@ -80,6 +80,7 @@ def run_episode(env, agent, seed: int, max_steps: int,
     total, steps = 0.0, 0
     ever: dict[str, float] = {}
     end: dict[str, float] = {}
+    first: dict[str, int] = {}
     terminated = truncated = False
 
     while not (terminated or truncated) and steps < max_steps:
@@ -93,6 +94,8 @@ def run_episode(env, agent, seed: int, max_steps: int,
         end = m
         for k, v in m.items():
             ever[k] = max(ever.get(k, 0.0), v)
+            if v > 0.5 and k not in first:
+                first[k] = steps
 
         if frames_out is not None:
             f = env.render()
@@ -115,6 +118,7 @@ def run_episode(env, agent, seed: int, max_steps: int,
     for k in sorted(ever):
         row[f"{k}_ever"] = int(ever[k] > 0.5)
         row[f"{k}_end"] = int(end.get(k, 0.0) > 0.5)
+        row[f"{k}_first_step"] = first.get(k, -1)  # -1 表示整回合从未满足
     return row
 
 
