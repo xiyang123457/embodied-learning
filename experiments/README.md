@@ -41,7 +41,7 @@
 | 2 ManiSkill 接口核对 | `02_maniskill_probe/` | `.venv-maniskill` | 完成 | 见该目录 README 的实测结论 |
 | 3a PushCube PPO | `03_ppo_pushcube/` | `.venv-maniskill` | 完成（19/20） | [report.md](03_ppo_pushcube/report.md) |
 | 3b PickCube PPO | `04_ppo_pickcube/` | `.venv-maniskill` | 部分成功（11/20，受预算限制） | [report.md](04_ppo_pickcube/report.md) |
-| 4 ACT（Transfer Cube） | 未开始 | `.venv-act`（规划） | — | — |
+| 4 ACT（Transfer Cube） | `05_act_transfer_cube/` | `.venv-act` | 进行中（200/2000 epochs，26%） | [report.md](05_act_transfer_cube/report.md) |
 | 5 数据量消融 | 未开始 | 依赖阶段 4 | — | — |
 
 `common/` 放跨阶段共用的代码：`runner.py`（配置驱动的运行封装与留痕）、
@@ -55,6 +55,7 @@
 | `.venv` | 3.12 | mujoco 3.11.0 / gymnasium-robotics 1.4.2 / torch 2.14.1+cpu | W5–W7（**不要动**） |
 | `.venv-ppo` | 3.12 | torch 2.15.0+cu132 / SB3 2.9.2 | 阶段 1 |
 | `.venv-maniskill` | 3.12 | mani_skill 3.0.1 / sapien 3.0.3 / torch 2.15.0 / tensorboard | 阶段 2、3 |
+| `.venv-act` | **3.11** | mujoco 2.3.7 / dm_control 1.0.14 / torch 2.15.0+cu132 | 阶段 4（ACT） |
 
 重建 `.venv-ppo`：
 

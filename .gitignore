@@ -25,3 +25,7 @@ demos/
 # 阶段实验：中间 checkpoint 与 tensorboard 事件不进 git（保留 final_ckpt.pt）
 experiments/**/runs/*/ckpt_*.pt
 experiments/**/runs/*/events.out.tfevents.*
+
+# 阶段 4 (ACT)：模型与逐回合视频体积大且可重现，不进 git
+experiments/**/runs/*/policy_*.ckpt
+experiments/**/runs/*/video[0-9]*.mp4

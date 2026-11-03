@@ -14,6 +14,7 @@
 | 阶段 2 | ManiSkill 接口核对 + CPU/GPU 仿真后端实测（单环境慢 18 倍，1024 环境快 36 倍） | `experiments/02_maniskill_probe/` |
 | 阶段 3 | PushCube PPO：19/20 成功；发现 return 是反向指标 | `experiments/03_ppo_pushcube/` |
 | 阶段 3b | PickCube PPO：2M 步 0/20、6M 步 11/20；瓶颈在「停稳」不在「搬运」 | `experiments/04_ppo_pickcube/` |
+| 阶段 4 | ACT 双臂 Transfer Cube：环境与闭环打通，200 epochs → 26%（短训练） | `experiments/05_act_transfer_cube/` |
 
 **W2 的起点实验**：一个不看状态的随机策略和一个只看位置误差的比例控制策略，
 在完全相同的 30 个起点/目标上，到达成功率分别是 0/30 和 30/30；而这个差距**完全由
@@ -30,6 +31,7 @@
 | **W6–W7** | 复用 W5 的 Ubuntu + Python 3.12 venv | W6 需要 CPU 版 PyTorch；W7 只用 NumPy + Matplotlib |
 | **阶段 1** | 独立 `.venv-ppo`（系统 Python 3.12） | torch 2.15.0+cu132 / SB3 2.9.2 / gymnasium 1.4.0，见 `requirements-ppo.txt` |
 | **阶段 2–3** | 独立 `.venv-maniskill`（系统 Python 3.12） | mani_skill 3.0.1 / sapien 3.0.3 / torch 2.15.0 / tensorboard；渲染需 Vulkan |
+| **阶段 4** | 独立 `.venv-act`（**Python 3.11**，conda prefix） | mujoco 2.3.7 / dm_control 1.0.14 / torch 2.15.0+cu132；需 `MUJOCO_GL=egl` |
 
 W2–W4：
 
@@ -258,6 +260,40 @@ mujoco 3.11.0 / gymnasium 1.4.0 / gymnasium-robotics 1.4.2。**mujoco 不能升�
 
 详细分析见 [`experiments/03_ppo_pushcube/report.md`](experiments/03_ppo_pushcube/report.md)
 与 [`experiments/04_ppo_pickcube/report.md`](experiments/04_ppo_pickcube/report.md)。
+
+## 阶段 4：ACT 双臂 Transfer Cube
+
+这一步换任务、换范式（模仿学习）、换环境：`sim_transfer_cube_scripted` + MuJoCo 2.3.7 +
+Python 3.11，与阶段 2–3 的 SAPIEN 环境完全隔离。
+
+`third_party/act` 不进 git，克隆后需要两处补丁（`DATA_DIR` 占位符、`num_episodes` 可配置），
+完整步骤与全部命令见 [`experiments/05_act_transfer_cube/README.md`](experiments/05_act_transfer_cube/README.md)。
+
+```bash
+cd third_party/act
+
+# 1. 生成示范：50/50 成功，18 GB
+MUJOCO_GL=egl ../../.venv-act/bin/python record_sim_episodes.py \
+  --task_name sim_transfer_cube_scripted --num_episodes 50 \
+  --dataset_dir ../../experiments/05_act_transfer_cube/data/sim_transfer_cube_scripted
+
+# 2. 训练：25 条（内存限制），200 epochs，约 7.5 分钟
+ACT_NUM_EPISODES=25 MUJOCO_GL=egl ../../.venv-act/bin/python imitate_episodes.py ...
+
+# 3. 评估：50 次 rollout
+ACT_NUM_EPISODES=25 MUJOCO_GL=egl ../../.venv-act/bin/python imitate_episodes.py ... --eval --temporal_agg
+```
+
+首轮闭环的结论（**短训练，不是最终基线**）：
+
+- **链路全部打通**：脚本化示范 50/50 → ACT 训练 → checkpoint 重载 → 仿真 rollout → 视频
+- **200 epochs 得到 26%（13/50）**，但只有官方 2000 epochs 的 1/10，数据也只有 25/50 条
+- **奖励分档指出瓶颈**：46% 能碰到方块、42% 能举起，但从举起到交接成功掉到 26%
+  → 卡在「双臂交接」，不是「找不到方块」
+- **val loss 0.25 与成功率 26% 不矛盾**：loss 是动作序列的 L1 误差，不是任务完成度
+- **内存是硬约束**：ACT 把全部图像读进 RAM，50 条 18 GB 超出本机可用内存（约 19 GB）
+
+详细见 [`experiments/05_act_transfer_cube/report.md`](experiments/05_act_transfer_cube/report.md)。
 
 ## 目录
 
