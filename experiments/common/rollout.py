@@ -162,6 +162,9 @@ def evaluate_main(stage_dir: Path, baseline_py: Path,
     ap.add_argument("--max-steps", type=int, default=50,
                     help="单回合上限，与训练的 episode horizon 一致")
     ap.add_argument("--no-video", action="store_true", help="完全不录视频")
+    ap.add_argument("--record-seeds", default="",
+                    help="指定要录制视频的种子（逗号分隔）；"
+                         "不给时默认录首个成功与首个失败")
     ap.add_argument("--video-fps", type=int, default=4,
                     help="评估视频帧率；成功回合只有十几步，默认降到 4fps 慢放")
     ap.add_argument("--out", default=None, help="输出目录，默认放在 checkpoint 同级 eval/")
@@ -203,29 +206,40 @@ def evaluate_main(stage_dir: Path, baseline_py: Path,
     # ---- 2. 补录首个成功与首个失败，两类都要有视频
     recorded: list[str] = []
     if not args.no_video:
-        cases = []
-        ok = next((r for r in rows if r.get("success_ever")), None)
-        bad = next((r for r in rows if not r.get("success_ever")), None)
-        if ok:
-            cases.append(("success", ok))
-        if bad:
-            cases.append(("failure", bad))
-        if not ok:
-            print("[提示] 本次评估没有任何成功回合；只录到失败视频，不能声称复现成功")
-        if not bad:
-            print("[提示] 本次评估没有失败回合，只录到成功视频；不能声称策略无失败模式")
-
-        for tag, ref in cases:
+        def record_one(seed: int, tag: str, expected: int | None = None) -> None:
             frames: list[tuple[np.ndarray, str]] = []
-            redo = run_episode(env, agent, ref["seed"], args.max_steps,
-                               frames_out=frames)
-            if redo["success_ever"] != ref["success_ever"]:
-                print(f"[警告] seed={ref['seed']} 重跑结果与首次不一致，检查随机性设置")
-            path = out_dir / f"{tag}_seed{ref['seed']}.mp4"
+            redo = run_episode(env, agent, seed, args.max_steps, frames_out=frames)
+            if expected is not None and redo["success_ever"] != expected:
+                print(f"[警告] seed={seed} 重跑结果与首次不一致，检查随机性设置")
+            path = out_dir / f"{tag}_seed{seed}.mp4"
             n_frames = write_video(path, frames, fps=args.video_fps)
             recorded.append(path.name)
             print(f"  录制 {path.name}（{len(frames)} 步 -> {n_frames} 帧 "
-                  f"@{args.video_fps}fps）")
+                  f"@{args.video_fps}fps，success={int(redo['success_ever'])}）")
+
+        if args.record_seeds:
+            wanted = [int(x) for x in args.record_seeds.split(",") if x.strip()]
+            by_seed = {r["seed"]: r for r in rows}
+            for s in wanted:
+                ref = by_seed.get(s)
+                if ref is None:
+                    print(f"[跳过] seed={s} 不在本次评估范围内（种子区间 "
+                          f"{args.seed_start}-{args.seed_start + args.n_episodes - 1}）")
+                    continue
+                is_ok = bool(ref.get("success_ever"))
+                record_one(s, "success" if is_ok else "failure", expected=int(is_ok))
+        else:
+            ok_ref = next((r for r in rows if r.get("success_ever")), None)
+            bad_ref = next((r for r in rows if not r.get("success_ever")), None)
+            if ok_ref is None:
+                print("[提示] 本次评估没有任何成功回合；只录到失败视频，不能声称复现成功")
+            if bad_ref is None:
+                print("[提示] 本次评估没有失败回合，只录到成功视频；不能声称策略无失败模式")
+            for tag, ref in (("success", ok_ref), ("failure", bad_ref)):
+                if ref is None:
+                    continue
+                record_one(ref["seed"], tag,
+                           expected=int(bool(ref.get("success_ever"))))
 
     env.close()
 
