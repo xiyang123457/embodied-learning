@@ -41,6 +41,19 @@
 三个分解指标，`per_episode.csv` 里每个都有 `_ever` 与 `_end` 两列，
 用来区分「没抓到」「抓到了没搬过去」「搬到了没停稳」三种失败。
 
+## 图表
+
+```bash
+# 两个预算一起传，会额外生成 compare_eval.png
+./.venv-maniskill/bin/python experiments/common/plot.py \
+  experiments/04_ppo_pickcube/runs/train_20261103_095601_seed1 \
+  experiments/04_ppo_pickcube/runs/train6m_20261103_095904_seed1
+```
+
+产出到 `runs/plots/`：每个 run 的 `_eval.png`（success + return 双轴）、
+`_sps.png`（吞吐）、`_breakdown.png`（is_grasped / is_obj_placed /
+is_robot_static / success 的比率），以及多 run 时的 `compare_eval.png`。
+
 ## 当前结论（详见 [report.md](report.md)）
 
 | 预算 | `success` | `is_grasped` | `is_obj_placed` | `is_robot_static` |

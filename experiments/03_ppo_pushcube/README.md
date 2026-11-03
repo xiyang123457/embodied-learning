@@ -64,6 +64,24 @@ cd third_party/ManiSkill && git sparse-checkout set examples/baselines
 所以默认降到 4 fps，首帧定格 5 帧、末帧定格 10 帧，并在每帧左上角叠加
 `step / reward / success`。用 `--video-fps` 可调整速度。
 
+## 图表
+
+官方 baseline 只写 tensorboard events 和 stdout，不产图，所以单独用公共绘图脚本
+从 `stdout.log` 与 `eval/per_episode.csv` 生成（不依赖 tensorboard）：
+
+```bash
+./.venv-maniskill/bin/python experiments/common/plot.py \
+  experiments/03_ppo_pushcube/runs/<run>
+```
+
+产出到 `runs/plots/`：
+
+| 文件 | 内容 |
+|---|---|
+| `<run>_eval.png` | 评估曲线：success_once 与 return 随训练步数变化（双轴） |
+| `<run>_sps.png` | 吞吐曲线：每个迭代的 steps/s |
+| `<run>_breakdown.png` | 独立评估的指标分解柱状图 |
+
 ## 配置项
 
 `configs/smoke.json` / `configs/train.json` 的键直接映射到官方脚本参数（`_` → `-`）。
