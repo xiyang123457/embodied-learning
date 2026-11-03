@@ -275,24 +275,52 @@ def plot_trajectory(traj_path: Path, seed: int, name: str, out_png: Path,
 
 
 def plot_compare(parsed_list: list[tuple[str, dict]], out_png: Path) -> bool:
+    """多 run 的 success 对比。
+
+    只画一条绝对步数曲线时，短预算的线会全部挤在 x 轴最左端、并且贴在 y=0 上
+    互相遮挡，看起来像只有一条。所以拆成两栏：
+      左：绝对步数（看谁能训到多高）
+      右：训练进度归一化（看同样进度下谁学得更快，三条线形状可直接对比）
+    同时用不同线型与标记，即使数值重合也能分辨。
+    """
     series = [(short_name(n), p) for n, p in parsed_list
-              if any(k.endswith("success_once") for k in (p["evals"][0] if p["evals"] else {}))]
+              if p["evals"] and any(k.endswith("success_once") for k in p["evals"][0])]
     if len(series) < 2:
         return False
+    # 按总步数从短到长排序，短预算先画，长预算压在上面
+    series.sort(key=lambda x: max(e["step"] for e in x[1]["evals"]))
 
-    fig, ax = plt.subplots(figsize=(9, 4.4), dpi=130)
     cmap = plt.get_cmap("tab10")
+    linestyles = ["-", "--", "-.", ":"]
+    markers = ["o", "s", "^", "D"]
+
+    fig, axes = plt.subplots(1, 2, figsize=(12.5, 4.6), dpi=130)
     for i, (name, parsed) in enumerate(series):
         evals = parsed["evals"]
         key = next(k for k in evals[0] if k.endswith("success_once"))
-        ax.plot([e["step"] for e in evals], [e[key] for e in evals],
-                "o-", color=cmap(i), lw=1.8, ms=5, label=name)
-    ax.set_xlabel("训练步数 (global_step)")
-    ax.set_ylabel("成功率 (success_once)")
-    ax.set_ylim(-0.05, 1.05)
-    ax.grid(alpha=0.3)
-    ax.legend(fontsize=9)
-    ax.set_title("不同训练预算的评估成功率对比（每次评估约 8 个回合）", fontsize=10)
+        xs = [e["step"] for e in evals]
+        ys = [e[key] for e in evals]
+        total = xs[-1] if xs and xs[-1] > 0 else 1
+
+        axes[0].plot([x / 1e6 for x in xs], ys, linestyle=linestyles[i % 4],
+                     marker=markers[i % 4], color=cmap(i), lw=1.8, ms=5,
+                     label=name, alpha=0.9)
+        axes[1].plot([100 * x / total for x in xs], ys, linestyle=linestyles[i % 4],
+                     marker=markers[i % 4], color=cmap(i), lw=1.8, ms=5,
+                     label=name, alpha=0.9)
+
+    axes[0].set_xlabel("训练步数（百万步）")
+    axes[0].set_title("按绝对步数", fontsize=10)
+    axes[1].set_xlabel("训练进度 (%)")
+    axes[1].set_title("按训练进度归一化（对比学习速度）", fontsize=10)
+
+    for ax in axes:
+        ax.set_ylabel("成功率 (success_once)")
+        ax.set_ylim(-0.05, 1.05)
+        ax.grid(alpha=0.3)
+        ax.legend(fontsize=8.5, loc="upper left")
+
+    fig.suptitle("不同训练预算的评估成功率对比（每次评估约 8 个回合）", fontsize=10)
     fig.tight_layout()
     fig.savefig(out_png)
     plt.close(fig)
