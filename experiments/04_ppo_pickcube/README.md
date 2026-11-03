@@ -65,6 +65,31 @@ is_robot_static / success 的比率），以及多 run 时的 `compare_eval.png`
 - **失败中 5/9 是「搬到位但没停稳」**，不是「没搬过去」（4/9）。
 - **return 在 4M 步前涨了 7 倍而 success 始终为 0**，再次说明不能用 return 代替 success。
 
+## 失败诊断
+
+```bash
+./.venv-maniskill/bin/python experiments/04_ppo_pickcube/diagnose.py \
+  --checkpoint experiments/04_ppo_pickcube/runs/<run>/final_ckpt.pt --max-steps 100
+```
+
+逐帧记录 `obj` / `goal` / `tcp` 位置、`obj_to_goal_dist`、`max|qvel|` 与三个判定，
+输出 `trajectory.csv` 与 `episode_summary.csv`（含首次到位/首次静止步数）。
+
+结论（20 个种子，100 步窗口）：
+
+| 目标高度 | 成功 | 成功率 |
+|---|---|---|
+| `goal_z < 0.15` | 9/9 | **100%** |
+| `goal_z ≥ 0.15` | 2/11 | **18%** |
+
+- 初始距离与抓取质量在成功/失败组之间几乎无差异（0.108–0.117、0.009–0.016），
+  所以不是「够不着」或「抓不稳」。
+- 延长到 100 步后成功数仍是 11/20，**时间不是瓶颈**。
+- 失败回合的典型轨迹是「方块在圈内时手臂停不下来，等停下来方块已被推出圈外」。
+
+**因此 55% 这个整体数字掩盖了「低目标全中、高目标基本不行」的结构，
+后续评估必须按目标高度分层。**
+
 ## 已知坑
 
 与阶段 3 相同（tyro 用 kebab-case、`runs/` 相对 cwd、需要 tensorboard、`sim_backend` 固定为
