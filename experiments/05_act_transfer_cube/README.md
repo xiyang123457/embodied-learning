@@ -1,6 +1,7 @@
 # 阶段 4：ACT 双臂 Transfer Cube（`sim_transfer_cube_scripted`）
 
-对应计划书第 6 节。使用 ACT 官方仓库，不改其训练逻辑，只补齐数据路径配置。
+对应计划书第 6 节。使用 ACT 官方仓库。相对官方代码只有**路径配置补丁**和**训练循环稳定性补丁**，
+算法与超参未改（见文末「补丁三」）。
 
 环境：`.venv-act`（Python 3.11 + mujoco 2.3.7 + dm_control 1.0.14 + torch 2.15.0+cu132）。
 
@@ -33,7 +34,7 @@ DATA_DIR = str(_REPO_ROOT / 'experiments' / '05_act_transfer_cube' / 'data')
 'num_episodes': int(os.environ.get('ACT_NUM_EPISODES', 50)),
 ```
 
-其余代码未改动。
+`constants.py` 其余部分未改动；`utils.py` / `imitate_episodes.py` 的改动见下文「补丁三」。
 
 ## 环境
 
@@ -96,6 +97,39 @@ ACT_NUM_EPISODES=25 MUJOCO_GL=egl ../../.venv-act/bin/python imitate_episodes.py
 3. **checkpoint 很大**：单个 321 MB，一次训练存 6 个 ≈ 1.9 GB，已加入 `.gitignore`。
 4. **必须设 `MUJOCO_GL=egl`**，否则无头环境会尝试初始化 GLFW 窗口。
 5. 评估会生成 50 个 `video*.mp4`（约 300 MB），已忽略；代表性案例复制到 `clips/`。
+
+## 补丁三：训练循环与 DataLoader（2026-11-03 追加）
+
+背景：2000 epoch 长跑时整机明显卡顿。实测定位到两个与训练相关的成因——worker 进程每个
+epoch 重建（PID 每 2~4 秒变化，每次 fork 约 1.9 GB）、以及每 100 epoch 落盘 336 MB 时的阻塞。
+算法与超参未动。
+
+`utils.py` `load_data()`：worker 常驻，不再每个 epoch 重建。
+
+```python
+num_workers = int(os.environ.get('ACT_NUM_WORKERS', 2))
+loader_kwargs = {'persistent_workers': True, 'prefetch_factor': 2} if num_workers > 0 else {}
+train_dataloader = DataLoader(..., num_workers=num_workers, **loader_kwargs)
+val_dataloader = DataLoader(..., num_workers=num_workers, **loader_kwargs)
+```
+
+> 注意：`num_workers` 从 1 改为 2 会改变 worker 侧的 `np.random.choice` 序列（起始帧采样），
+> 因此**与旧 run 不是逐位可复现**，新旧对比只能看同一指标的趋势。
+
+`imitate_episodes.py`：
+
+| 改动 | 性质 |
+|---|---|
+| worker 常驻（`persistent_workers=True`，`num_workers=2`） | **提速 + 消除卡顿尖峰** |
+| `forward_pass` 的 `.cuda()` 加 `non_blocking=True` | 提速（与 `pin_memory=True` 配合） |
+| `save_ckpt_atomic()`：写 `.tmp` 再 `os.replace` | 健壮性：中断不产生截断 ckpt |
+| best 权重改存 `v.detach().cpu().clone()` | 避免显存里多留一份约 336 MB |
+| 每 epoch 归约后立即转 `float` | **清理，不是提速** |
+
+最后一项的说明：原实现 `train_history[nb*epoch : nb*(epoch+1)]` 的切片恰好是当前 epoch
+（`nb = len(train_dataloader)`），计算量本来就是常数，不存在随 epoch 增长的重算；
+保留的张量也只有 0-dim 标量，显存增量在几十 MB 量级。改它是为了让历史列表不再持有
+CUDA 张量，**不要把它记成性能收益**。
 
 ## 当前结果
 
