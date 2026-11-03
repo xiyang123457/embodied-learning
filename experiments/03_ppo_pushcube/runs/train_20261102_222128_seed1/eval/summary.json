@@ -8,17 +8,17 @@
     119
   ],
   "max_steps": 50,
-  "success_count": 19,
-  "success_rate": 0.95,
   "mean_return": 5.3649,
   "std_return": 4.257,
-  "mean_return_success_only": 4.4158,
-  "mean_return_failure_only": 23.3977,
   "mean_steps": 15.8,
   "videos": [
     "success_seed100.mp4",
     "failure_seed113.mp4"
   ],
   "device": "cuda",
-  "note": "deterministic=True, 独立种子列表, 与训练种子不重叠"
+  "note": "deterministic=True, 独立种子列表, 与训练种子不重叠",
+  "success_ever_count": 19,
+  "success_ever_rate": 0.95,
+  "mean_return_when_success_ever": 4.4158,
+  "mean_return_when_not_success_ever": 23.3977
 }
