@@ -291,8 +291,9 @@ def plot_compare(parsed_list: list[tuple[str, dict]], out_png: Path) -> bool:
     series.sort(key=lambda x: max(e["step"] for e in x[1]["evals"]))
 
     cmap = plt.get_cmap("tab10")
-    linestyles = ["-", "--", "-.", ":"]
-    markers = ["o", "s", "^", "D"]
+    # 至少覆盖 5 条（2M / 6M / 三个 10M 种子），超出才循环
+    linestyles = ["-", "--", "-.", ":", (0, (3, 1, 1, 1)), (0, (5, 2))]
+    markers = ["o", "s", "^", "D", "v", "P"]
 
     fig, axes = plt.subplots(1, 2, figsize=(12.5, 4.6), dpi=130)
     for i, (name, parsed) in enumerate(series):
@@ -302,11 +303,11 @@ def plot_compare(parsed_list: list[tuple[str, dict]], out_png: Path) -> bool:
         ys = [e[key] for e in evals]
         total = xs[-1] if xs and xs[-1] > 0 else 1
 
-        axes[0].plot([x / 1e6 for x in xs], ys, linestyle=linestyles[i % 4],
-                     marker=markers[i % 4], color=cmap(i), lw=1.8, ms=5,
+        axes[0].plot([x / 1e6 for x in xs], ys, linestyle=linestyles[i % len(linestyles)],
+                     marker=markers[i % len(markers)], color=cmap(i), lw=1.8, ms=5,
                      label=name, alpha=0.9)
-        axes[1].plot([100 * x / total for x in xs], ys, linestyle=linestyles[i % 4],
-                     marker=markers[i % 4], color=cmap(i), lw=1.8, ms=5,
+        axes[1].plot([100 * x / total for x in xs], ys, linestyle=linestyles[i % len(linestyles)],
+                     marker=markers[i % len(markers)], color=cmap(i), lw=1.8, ms=5,
                      label=name, alpha=0.9)
 
     axes[0].set_xlabel("训练步数（百万步）")
