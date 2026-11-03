@@ -13,6 +13,7 @@
 | 阶段 1 | CartPole PPO 最小闭环：随机 0/20 → PPO 20/20，含 checkpoint 重载验证 | `experiments/01_ppo_cartpole/` |
 | 阶段 2 | ManiSkill 接口核对 + CPU/GPU 仿真后端实测（单环境慢 18 倍，1024 环境快 36 倍） | `experiments/02_maniskill_probe/` |
 | 阶段 3 | PushCube PPO：19/20 成功；发现 return 是反向指标 | `experiments/03_ppo_pushcube/` |
+| 阶段 3b | PickCube PPO：2M 步 0/20、6M 步 11/20；瓶颈在「停稳」不在「搬运」 | `experiments/04_ppo_pickcube/` |
 
 **W2 的起点实验**：一个不看状态的随机策略和一个只看位置误差的比例控制策略，
 在完全相同的 30 个起点/目标上，到达成功率分别是 0/30 和 30/30；而这个差距**完全由
@@ -226,6 +227,13 @@ mujoco 3.11.0 / gymnasium 1.4.0 / gymnasium-robotics 1.4.2。**mujoco 不能升�
 ./.venv-maniskill/bin/python experiments/03_ppo_pushcube/run.py --config train
 ./.venv-maniskill/bin/python experiments/03_ppo_pushcube/evaluate.py \
   --checkpoint experiments/03_ppo_pushcube/runs/<run>/final_ckpt.pt --n-episodes 20
+
+# 阶段 3b：PickCube（抓取任务，判据严 4 倍且要求静止，需要更长预算）
+./.venv-maniskill/bin/python experiments/04_ppo_pickcube/run.py --config train
+./.venv-maniskill/bin/python experiments/04_ppo_pickcube/run.py \
+  --config train --set total_timesteps=6000000 tag=train6m
+./.venv-maniskill/bin/python experiments/04_ppo_pickcube/evaluate.py \
+  --checkpoint experiments/04_ppo_pickcube/runs/<run>/final_ckpt.pt --n-episodes 20
 ```
 
 关键结论：
@@ -240,7 +248,16 @@ mujoco 3.11.0 / gymnasium 1.4.0 / gymnasium-robotics 1.4.2。**mujoco 不能升�
 - 这属于「在官方 baseline 上完成自己的训练与评估」，**不等于复现官方成功率**——
   官方 README 没给 PushCube 的百分比。
 
-详细分析见 [`experiments/03_ppo_pushcube/report.md`](experiments/03_ppo_pushcube/report.md)。
+- **PickCube 的瓶颈不是抓取而是停稳**：6M 步下 `is_grasped` 20/20、`is_obj_placed` 16/20，
+  但 `is_robot_static` 只有 11/20，`success` 因此停在 11/20。9 个失败回合里
+  **5 个是「搬到位却没停稳」**，只有 4 个是完全没搬到。
+- **2M 步对 PickCube 不够，是预算问题不是方法问题**：2M 时 `is_grasped` 已达 95% 而
+  `is_obj_placed` 为 0；加到 6M 后 `success` 从 0 跳到 55%。
+- **return 在 4M 步前涨了 7 倍而 success 恒为 0**，与 PushCube 的「return 反向」合起来看，
+  再次说明**任何时候都不能用 return 代替 success**。
+
+详细分析见 [`experiments/03_ppo_pushcube/report.md`](experiments/03_ppo_pushcube/report.md)
+与 [`experiments/04_ppo_pickcube/report.md`](experiments/04_ppo_pickcube/report.md)。
 
 ## 目录
 

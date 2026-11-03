@@ -1,0 +1,29 @@
+{
+  "checkpoint": "/home/xiyang/embodied-learning/experiments/04_ppo_pickcube/runs/train_20261103_095601_seed1/final_ckpt.pt",
+  "env_id": "PickCube-v1",
+  "control_mode": "pd_joint_delta_pos",
+  "n_episodes": 20,
+  "seeds": [
+    100,
+    119
+  ],
+  "max_steps": 50,
+  "mean_return": 14.9141,
+  "std_return": 5.0041,
+  "mean_steps": 50.0,
+  "videos": [
+    "failure_seed100.mp4"
+  ],
+  "device": "cuda",
+  "note": "deterministic=True, 独立种子列表, 与训练种子不重叠",
+  "is_grasped_ever_count": 19,
+  "is_grasped_ever_rate": 0.95,
+  "mean_return_when_is_grasped_ever": 15.2759,
+  "mean_return_when_not_is_grasped_ever": 8.0409,
+  "is_obj_placed_ever_count": 0,
+  "is_obj_placed_ever_rate": 0.0,
+  "is_robot_static_ever_count": 20,
+  "is_robot_static_ever_rate": 1.0,
+  "success_ever_count": 0,
+  "success_ever_rate": 0.0
+}

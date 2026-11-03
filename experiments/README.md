@@ -22,9 +22,9 @@
 ```
 <阶段>/
 ├── README.md          # 怎么装、怎么跑、已知坑
-├── report.md          # 结果与分析（阶段 1、3 有；纯核对类阶段可省）
+├── report.md          # 结果与分析（纯核对类阶段可省）
 ├── configs/           # 实验参数（JSON，配置驱动，不靠命令行口口相传）
-├── <脚本>.py          # 入口脚本，路径基于 __file__，不依赖 cwd
+├── run.py / evaluate.py  # 薄壳入口，真正逻辑在 ../common/；路径基于 __file__，不依赖 cwd
 ├── runs/ 或 outputs/  # 实验产物
 ```
 
@@ -37,11 +37,16 @@
 
 | 阶段 | 目录 | 环境 | 状态 | 报告 |
 |---|---|---|---|---|
-| 1 CartPole PPO | `01_ppo_cartpole/` | `.venv-ppo` | 完成 | [report.md](01_ppo_cartpole/report.md) |
+| 1 CartPole PPO | `01_ppo_cartpole/` | `.venv-ppo` | 完成（20/20） | [report.md](01_ppo_cartpole/report.md) |
 | 2 ManiSkill 接口核对 | `02_maniskill_probe/` | `.venv-maniskill` | 完成 | 见该目录 README 的实测结论 |
-| 3 PushCube PPO | `03_ppo_pushcube/` | `.venv-maniskill` | 完成 | [report.md](03_ppo_pushcube/report.md) |
+| 3a PushCube PPO | `03_ppo_pushcube/` | `.venv-maniskill` | 完成（19/20） | [report.md](03_ppo_pushcube/report.md) |
+| 3b PickCube PPO | `04_ppo_pickcube/` | `.venv-maniskill` | 部分成功（11/20，受预算限制） | [report.md](04_ppo_pickcube/report.md) |
 | 4 ACT（Transfer Cube） | 未开始 | `.venv-act`（规划） | — | — |
 | 5 数据量消融 | 未开始 | 依赖阶段 4 | — | — |
+
+`common/` 放跨阶段共用的代码：`runner.py`（配置驱动的运行封装与留痕）、
+`rollout.py`（独立评估、分解指标、慢放视频）。各阶段目录只保留自己的 `configs/` 和薄壳入口，
+避免把 `run.py` / `evaluate.py` 复制一遍。
 
 ## 环境对照表
 

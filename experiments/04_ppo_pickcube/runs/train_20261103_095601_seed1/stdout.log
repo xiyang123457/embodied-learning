@@ -1,0 +1,77 @@
+Saving eval videos to runs/train_20261103_095601_seed1/videos
+Running training
+####
+args.num_iterations=19 args.num_envs=2048 args.num_eval_envs=8
+args.minibatch_size=3200 args.batch_size=102400 args.update_epochs=8
+####
+Epoch: 1, global_step=0
+Evaluating
+Evaluated 400 steps resulting in 8 episodes
+eval_success_once_mean=0.0
+eval_return_mean=2.9099280834198
+eval_episode_len_mean=50.0
+eval_reward_mean=0.058198560029268265
+eval_success_at_end_mean=0.0
+model saved to runs/train_20261103_095601_seed1/ckpt_1.pt
+SPS: 16938
+Epoch: 2, global_step=102400
+SPS: 22206
+Epoch: 3, global_step=204800
+SPS: 24677
+Epoch: 4, global_step=307200
+SPS: 25677
+Epoch: 5, global_step=409600
+SPS: 25920
+Epoch: 6, global_step=512000
+Evaluating
+Evaluated 400 steps resulting in 8 episodes
+eval_success_once_mean=0.0
+eval_return_mean=7.384002685546875
+eval_episode_len_mean=50.0
+eval_reward_mean=0.14768004417419434
+eval_success_at_end_mean=0.0
+model saved to runs/train_20261103_095601_seed1/ckpt_6.pt
+SPS: 23448
+Epoch: 7, global_step=614400
+SPS: 23969
+Epoch: 8, global_step=716800
+SPS: 24304
+Epoch: 9, global_step=819200
+SPS: 24497
+Epoch: 10, global_step=921600
+SPS: 24666
+Epoch: 11, global_step=1024000
+Evaluating
+Evaluated 400 steps resulting in 8 episodes
+eval_success_once_mean=0.0
+eval_return_mean=9.315601348876953
+eval_episode_len_mean=50.0
+eval_reward_mean=0.1863120049238205
+eval_success_at_end_mean=0.0
+model saved to runs/train_20261103_095601_seed1/ckpt_11.pt
+SPS: 23402
+Epoch: 12, global_step=1126400
+SPS: 23548
+Epoch: 13, global_step=1228800
+SPS: 23690
+Epoch: 14, global_step=1331200
+SPS: 23499
+Epoch: 15, global_step=1433600
+SPS: 20261
+Epoch: 16, global_step=1536000
+Evaluating
+Evaluated 400 steps resulting in 8 episodes
+eval_success_once_mean=0.0
+eval_return_mean=12.630083084106445
+eval_episode_len_mean=50.0
+eval_reward_mean=0.252601683139801
+eval_success_at_end_mean=0.0
+model saved to runs/train_20261103_095601_seed1/ckpt_16.pt
+SPS: 15827
+Epoch: 17, global_step=1638400
+SPS: 16154
+Epoch: 18, global_step=1740800
+SPS: 16505
+Epoch: 19, global_step=1843200
+SPS: 16278
+model saved to runs/train_20261103_095601_seed1/final_ckpt.pt

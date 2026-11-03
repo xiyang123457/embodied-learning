@@ -1,0 +1,71 @@
+Saving eval videos to runs/smoke_20261103_095514_seed1/videos
+Running training
+####
+args.num_iterations=16 args.num_envs=64 args.num_eval_envs=4
+args.minibatch_size=400 args.batch_size=3200 args.update_epochs=4
+####
+Epoch: 1, global_step=0
+Evaluating
+Evaluated 200 steps resulting in 4 episodes
+eval_success_once_mean=0.0
+eval_return_mean=2.7186951637268066
+eval_episode_len_mean=50.0
+eval_reward_mean=0.05437389761209488
+eval_success_at_end_mean=0.0
+model saved to runs/smoke_20261103_095514_seed1/ckpt_1.pt
+SPS: 883
+Epoch: 2, global_step=3200
+SPS: 1407
+Epoch: 3, global_step=6400
+SPS: 1729
+Epoch: 4, global_step=9600
+SPS: 1938
+Epoch: 5, global_step=12800
+SPS: 2075
+Epoch: 6, global_step=16000
+Evaluating
+Evaluated 200 steps resulting in 4 episodes
+eval_success_once_mean=0.0
+eval_return_mean=4.820661544799805
+eval_episode_len_mean=50.0
+eval_reward_mean=0.09641323238611221
+eval_success_at_end_mean=0.0
+model saved to runs/smoke_20261103_095514_seed1/ckpt_6.pt
+SPS: 1769
+Epoch: 7, global_step=19200
+SPS: 1872
+Epoch: 8, global_step=22400
+SPS: 1952
+Epoch: 9, global_step=25600
+SPS: 2022
+Epoch: 10, global_step=28800
+SPS: 2084
+Epoch: 11, global_step=32000
+Evaluating
+Evaluated 200 steps resulting in 4 episodes
+eval_success_once_mean=0.0
+eval_return_mean=6.192197322845459
+eval_episode_len_mean=50.0
+eval_reward_mean=0.1238439530134201
+eval_success_at_end_mean=0.0
+model saved to runs/smoke_20261103_095514_seed1/ckpt_11.pt
+SPS: 1896
+Epoch: 12, global_step=35200
+SPS: 1951
+Epoch: 13, global_step=38400
+SPS: 2000
+Epoch: 14, global_step=41600
+SPS: 2043
+Epoch: 15, global_step=44800
+SPS: 2077
+Epoch: 16, global_step=48000
+Evaluating
+Evaluated 200 steps resulting in 4 episodes
+eval_success_once_mean=0.0
+eval_return_mean=8.452877044677734
+eval_episode_len_mean=50.0
+eval_reward_mean=0.16905754804611206
+eval_success_at_end_mean=0.0
+model saved to runs/smoke_20261103_095514_seed1/ckpt_16.pt
+SPS: 1941
+model saved to runs/smoke_20261103_095514_seed1/final_ckpt.pt
