@@ -54,6 +54,14 @@
 `_sps.png`（吞吐）、`_breakdown.png`（is_grasped / is_obj_placed /
 is_robot_static / success 的比率），以及多 run 时的 `compare_eval.png`。
 
+若 run 目录下存在 `diagnose_*/`，还会额外生成：
+
+| 文件 | 内容 |
+|---|---|
+| `_diagnose_<N>step_goal_height.png` | 左：每个种子的目标高度与成败散点；右：按高度分层的成功率 |
+| `_diagnose_<N>step_traj_success_seedM.png` | 成功回合的轨迹：obj→goal 距离 + max\|qvel\|，绿底标出方块在圈内的区间 |
+| `_diagnose_<N>step_traj_failure_seedM.png` | 失败回合的同一组曲线，用来看「到位」与「静止」是否错开 |
+
 ## 当前结论（详见 [report.md](report.md)）
 
 | 预算 | `success` | `is_grasped` | `is_obj_placed` | `is_robot_static` |

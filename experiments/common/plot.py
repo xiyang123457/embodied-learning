@@ -85,7 +85,8 @@ def parse_stdout(path: Path) -> dict:
 
 
 def parse_per_episode(path: Path) -> list[dict]:
-    with path.open(encoding="utf-8") as f:
+    # newline="" 交给 csv 模块处理 CRLF，否则字段会带上 "\r" 导致 float() 失败
+    with path.open(encoding="utf-8", newline="") as f:
         return list(csv.DictReader(f))
 
 
@@ -175,6 +176,104 @@ def plot_breakdown(rows: list[dict], name: str, out_png: Path) -> bool:
     return True
 
 
+def plot_goal_height(rows: list[dict], name: str, out_png: Path,
+                     threshold: float = 0.15) -> bool:
+    """目标高度与成败的关系：左侧散点，右侧分层成功率。"""
+    if not rows:
+        return False
+    gz = [float(r["goal_z"]) for r in rows]
+    succ = [int(r["success_ever"]) for r in rows]
+
+    rng = np.random.default_rng(0)
+    jitter = rng.normal(0, 0.02, len(gz))
+
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.2), dpi=130)
+
+    ax = axes[0]
+    for g, s, j in zip(gz, succ, jitter):
+        ax.scatter(g, s + j, s=55, alpha=0.85,
+                   color="#238b45" if s else "#cb181d")
+    ax.axvline(threshold, color="#636363", ls=":", lw=1.2)
+    ax.set_xlabel("目标高度 goal_z (m)")
+    ax.set_ylabel("是否成功")
+    ax.set_yticks([0, 1])
+    ax.set_yticklabels(["失败", "成功"])
+    ax.set_ylim(-0.35, 1.35)
+    ax.grid(alpha=0.3)
+    ax.set_title(f"{short_name(name)}  每个种子的目标高度与结果", fontsize=10)
+
+    ax = axes[1]
+    lo = [s for g, s in zip(gz, succ) if g < threshold]
+    hi = [s for g, s in zip(gz, succ) if g >= threshold]
+    labels, rates, colors = [], [], []
+    for lab, group, col in ((f"goal_z < {threshold}\n(n={len(lo)})", lo, "#238b45"),
+                            (f"goal_z >= {threshold}\n(n={len(hi)})", hi, "#cb181d")):
+        labels.append(lab)
+        rates.append(sum(group) / len(group) if group else 0.0)
+        colors.append(col)
+    ax.bar(labels, rates, color=colors, width=0.5)
+    for i, r in enumerate(rates):
+        ax.text(i, r + 0.02, f"{r:.0%}", ha="center", fontsize=10)
+    ax.set_ylim(0, 1.12)
+    ax.set_ylabel("成功率")
+    ax.grid(axis="y", alpha=0.3)
+    ax.set_title("按目标高度分层成功率", fontsize=10)
+
+    fig.tight_layout()
+    fig.savefig(out_png)
+    plt.close(fig)
+    return True
+
+
+def plot_trajectory(traj_path: Path, seed: int, name: str, out_png: Path,
+                    goal_thresh: float = 0.025, static_thresh: float = 0.2) -> bool:
+    """单回合轨迹：obj→goal 距离与 max|qvel| 随步数变化，并标出两条阈值线。
+
+    这张图是用来看「到位」与「静止」是否错开的：绿色底色是方块在目标圈内的区间，
+    若红线（速度）在底色结束后才降到虚线以下，就是「减速时把方块推出了目标」。
+    """
+    with traj_path.open(encoding="utf-8", newline="") as f:
+        rows = [r for r in csv.DictReader(f) if int(r["seed"]) == seed]
+    if not rows:
+        return False
+
+    steps = [int(r["step"]) for r in rows]
+    dist = [float(r["obj_to_goal_dist"]) for r in rows]
+    qv = [float(r["qvel_max"]) for r in rows]
+    placed = [int(r["is_obj_placed"]) for r in rows]
+
+    fig, ax1 = plt.subplots(figsize=(9.5, 4.6), dpi=130)
+
+    ax1.fill_between(steps, 0, 1, where=[p > 0 for p in placed],
+                     transform=ax1.get_xaxis_transform(),
+                     color="#a1d99b", alpha=0.35, step="mid")
+    ax1.plot(steps, dist, color="#08519c", lw=2.0, label="obj→goal 距离")
+    ax1.axhline(goal_thresh, color="#08519c", ls="--", lw=1.1,
+                label=f"成功距离阈值 {goal_thresh * 100:.1f} cm")
+    ax1.set_xlabel("步数 (step)")
+    ax1.set_ylabel("obj→goal 距离 (m)", color="#08519c")
+    ax1.tick_params(axis="y", labelcolor="#08519c")
+    ax1.set_ylim(0, max(max(dist) * 1.15, goal_thresh * 4))
+
+    ax2 = ax1.twinx()
+    ax2.plot(steps, qv, color="#cb181d", lw=2.0, label="max|qvel|")
+    ax2.axhline(static_thresh, color="#cb181d", ls="--", lw=1.1,
+                label=f"静止阈值 {static_thresh}")
+    ax2.set_ylabel("max|qvel| (rad/s)", color="#cb181d")
+    ax2.tick_params(axis="y", labelcolor="#cb181d")
+
+    h1, l1 = ax1.get_legend_handles_labels()
+    h2, l2 = ax2.get_legend_handles_labels()
+    ax1.legend(h1 + h2, l1 + l2, loc="upper right", fontsize=8.5)
+    ax1.set_title(f"{short_name(name)}  seed={seed}   绿色底色 = 方块在目标圈内", fontsize=10)
+    ax1.grid(alpha=0.3)
+
+    fig.tight_layout()
+    fig.savefig(out_png)
+    plt.close(fig)
+    return True
+
+
 def plot_compare(parsed_list: list[tuple[str, dict]], out_png: Path) -> bool:
     series = [(short_name(n), p) for n, p in parsed_list
               if any(k.endswith("success_once") for k in (p["evals"][0] if p["evals"] else {}))]
@@ -235,6 +334,28 @@ def main() -> None:
             rows = parse_per_episode(ep)
             if plot_breakdown(rows, run_dir.name, out_dir / f"{run_dir.name}_breakdown.png"):
                 print(f"  -> {run_dir.name}_breakdown.png")
+
+        # 诊断产物：目标高度与成败的关系、典型成功/失败回合的轨迹
+        for diag in sorted(run_dir.glob("diagnose_*")):
+            ep_sum = diag / "episode_summary.csv"
+            traj = diag / "trajectory.csv"
+            if not ep_sum.exists():
+                continue
+            eps = parse_per_episode(ep_sum)
+            tag = f"{run_dir.name}_{diag.name}"
+            if plot_goal_height(eps, run_dir.name, out_dir / f"{tag}_goal_height.png"):
+                print(f"  -> {tag}_goal_height.png")
+            if not traj.exists():
+                continue
+            ok = next((e for e in eps if int(e["success_ever"]) == 1), None)
+            bad = next((e for e in eps if int(e["success_ever"]) == 0
+                        and int(e["first_placed"]) > 0), None)
+            for lab, ref in (("success", ok), ("failure", bad)):
+                if ref is None:
+                    continue
+                png = out_dir / f"{tag}_traj_{lab}_seed{ref['seed']}.png"
+                if plot_trajectory(traj, int(ref["seed"]), run_dir.name, png):
+                    print(f"  -> {png.name}")
 
     if plot_compare(parsed_all, out_dir / "compare_eval.png"):
         print("  -> compare_eval.png")
