@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import math
 import statistics
 import sys
 from pathlib import Path
@@ -39,6 +40,17 @@ from common.rollout import _scalar, build_agent, bool_metrics  # noqa: E402
 BASELINE_PY = REPO / "third_party/ManiSkill/examples/baselines/ppo/ppo.py"
 
 
+def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
+    """二项比例的 Wilson 置信区间；n 小的时候比正态近似可靠。"""
+    if n == 0:
+        return 0.0, 0.0
+    p = k / n
+    denom = 1 + z * z / n
+    center = (p + z * z / (2 * n)) / denom
+    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / denom
+    return max(0.0, center - half), min(1.0, center + half)
+
+
 def vec(t) -> list[float]:
     if isinstance(t, torch.Tensor):
         t = t.detach().cpu().numpy()
@@ -55,6 +67,8 @@ def main() -> None:
     ap.add_argument("--max-steps", type=int, default=100,
                     help="回合上限；训练是 50，这里用 100 检验延长后是否会静止")
     ap.add_argument("--out", default=None)
+    ap.add_argument("--goal-threshold", type=float, default=0.15,
+                    help="按目标高度分层统计的阈值（米）")
     args = ap.parse_args()
 
     ckpt = Path(args.checkpoint).resolve()
@@ -160,7 +174,8 @@ def main() -> None:
             "first_static": first_step("is_robot_static"),
             "first_success": first_step("success"),
             "static_in_1_50": int(first_step("is_robot_static", 1, 50) > 0),
-            "static_in_51_100": int(first_step("is_robot_static", 51, 100) > 0),
+            "static_after_50": int(
+                first_step("is_robot_static", 51, args.max_steps) > 0),
             "placed_in_1_50": int(first_step("is_obj_placed", 1, 50) > 0),
             "min_obj_to_goal_dist": round(
                 min(r["obj_to_goal_dist"] for r in rows), 4),
@@ -212,11 +227,30 @@ def main() -> None:
               f"{(mean_of('min_tcp_to_obj_dist', group) or 0):>13.3f}"
               f"{(mean_of('grasp_switches', group) or 0):>10.1f}")
 
-    print("\n延长到 100 步后的静止情况（qvel 用 is_static 的口径 max|qvel|，阈值 0.2）：")
-    for e in placed_fail:
-        print(f"  seed={e['seed']} 前50步静止={e['static_in_1_50']} "
-              f"51-100步静止={e['static_in_51_100']} "
-              f"到位后最小max|qvel|={e['min_qvel_max_after_placed']}")
+    if args.max_steps > 50:
+        print(f"\n延长到 {args.max_steps} 步后的静止情况"
+              f"（qvel 用 is_static 的口径 max|qvel|，阈值 0.2）：")
+        for e in placed_fail:
+            print(f"  seed={e['seed']} 前50步静止={e['static_in_1_50']} "
+                  f"51-{args.max_steps}步静止={e['static_after_50']} "
+                  f"到位后最小max|qvel|={e['min_qvel_max_after_placed']}")
+
+    # 分层成功率：主指标，避免整体成功率被低目标的满分回合掩盖
+    thr = args.goal_threshold
+    print(f"\n按目标高度分层（阈值 {thr} m，{args.max_steps} 步窗口）：")
+    print(f"{'分组':<20}{'成功/回合':>12}{'成功率':>10}{'95% CI (Wilson)':>20}")
+    groups = [
+        (f"goal_z < {thr}", [e for e in episodes if e["goal_z"] < thr]),
+        (f"goal_z >= {thr}", [e for e in episodes if e["goal_z"] >= thr]),
+        ("合计", episodes),
+    ]
+    for lab, group in groups:
+        n = len(group)
+        k = sum(e["success_ever"] for e in group)
+        lo, hi = wilson(k, n)
+        rate = f"{k / n:.1%}" if n else "n/a"
+        print(f"{lab:<20}{f'{k}/{n}':>12}{rate:>10}{f'[{lo:.0%}, {hi:.0%}]':>20}")
+
     print(f"\n产出目录: {out_dir}")
 
 

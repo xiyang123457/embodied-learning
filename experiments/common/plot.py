@@ -335,12 +335,10 @@ def main() -> None:
             if plot_breakdown(rows, run_dir.name, out_dir / f"{run_dir.name}_breakdown.png"):
                 print(f"  -> {run_dir.name}_breakdown.png")
 
-        # 诊断产物：目标高度与成败的关系、典型成功/失败回合的轨迹
-        for diag in sorted(run_dir.glob("diagnose_*")):
-            ep_sum = diag / "episode_summary.csv"
+        # 诊断产物：任何含 episode_summary.csv 的子目录（diagnose_* / eval50* 等）
+        for ep_sum in sorted(run_dir.glob("*/episode_summary.csv")):
+            diag = ep_sum.parent
             traj = diag / "trajectory.csv"
-            if not ep_sum.exists():
-                continue
             eps = parse_per_episode(ep_sum)
             tag = f"{run_dir.name}_{diag.name}"
             if plot_goal_height(eps, run_dir.name, out_dir / f"{tag}_goal_height.png"):
