@@ -1,0 +1,12 @@
+
+Success rate: 0.64
+Average return: 385.58
+
+Reward >= 0: 50/50 = 100.0%
+Reward >= 1: 41/50 = 82.0%
+Reward >= 2: 33/50 = 66.0%
+Reward >= 3: 32/50 = 64.0%
+Reward >= 4: 32/50 = 64.0%
+[np.int64(14), np.int64(0), np.int64(0), np.int64(0), np.int64(267), np.int64(0), np.int64(0), np.int64(0), np.int64(566), np.int64(656), np.int64(733), np.int64(685), np.int64(679), np.int64(639), np.int64(665), np.int64(196), np.int64(1), np.int64(671), np.int64(288), np.int64(659), np.int64(204), np.int64(662), np.int64(1), np.int64(673), np.int64(664), np.int64(265), np.int64(0), np.int64(681), np.int64(651), np.int64(11), np.int64(5), np.int64(1), np.int64(672), np.int64(657), np.int64(0), np.int64(661), np.int64(673), np.int64(687), np.int64(5), np.int64(2), np.int64(669), np.int64(689), np.int64(0), np.int64(6), np.int64(651), np.int64(678), np.int64(691), np.int64(654), np.int64(665), np.int64(682)]
+
+[np.int64(1), np.int64(0), np.int64(0), np.int64(0), np.int64(4), np.int64(0), np.int64(0), np.int64(0), np.int64(4), np.int64(4), np.int64(4), np.int64(4), np.int64(4), np.int64(4), np.int64(4), np.int64(4), np.int64(1), np.int64(4), np.int64(4), np.int64(4), np.int64(4), np.int64(4), np.int64(1), np.int64(4), np.int64(4), np.int64(4), np.int64(0), np.int64(4), np.int64(4), np.int64(1), np.int64(1), np.int64(1), np.int64(4), np.int64(4), np.int64(0), np.int64(4), np.int64(4), np.int64(4), np.int64(1), np.int64(1), np.int64(4), np.int64(4), np.int64(0), np.int64(2), np.int64(4), np.int64(4), np.int64(4), np.int64(4), np.int64(4), np.int64(4)]
