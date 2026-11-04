@@ -125,11 +125,21 @@ val_dataloader = DataLoader(..., num_workers=num_workers, **loader_kwargs)
 | `save_ckpt_atomic()`：写 `.tmp` 再 `os.replace` | 健壮性：中断不产生截断 ckpt |
 | best 权重改存 `v.detach().cpu().clone()` | 避免显存里多留一份约 336 MB |
 | 每 epoch 归约后立即转 `float` | **清理，不是提速** |
+| `plot_history` 改为滚动均值 + val ±1σ 带 + 自适应 y 轴 | 可读性 |
 
 最后一项的说明：原实现 `train_history[nb*epoch : nb*(epoch+1)]` 的切片恰好是当前 epoch
 （`nb = len(train_dataloader)`），计算量本来就是常数，不存在随 epoch 增长的重算；
 保留的张量也只有 0-dim 标量，显存增量在几十 MB 量级。改它是为了让历史列表不再持有
 CUDA 张量，**不要把它记成性能收益**。
+
+绘图改动的说明：2000 epoch 的原始曲线是 2000 个抖动点画在 6×4 画布上，且 epoch 0 的
+val loss ≈ 64 会把 y 轴拉满、其余部分压成一条平线。现改为 11×5、dpi 150、滚动均值
+（窗口 = epoch 数/100）、验证集画 ±1σ 带，y 轴按平滑曲线自适应，并标出 best val。
+已完成的历史 run 不必重训，可用脚本从日志重绘：
+
+```bash
+python plot_history.py runs/train25_e2000
+```
 
 ## 当前结果
 
